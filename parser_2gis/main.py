@@ -5,11 +5,10 @@ from typing import Any
 
 import pydantic
 
-from .common import GUI_ENABLED, report_from_validation_error, unwrap_dot_dict
+from .common import report_from_validation_error, unwrap_dot_dict
 from .config import Configuration
 from .version import version
 from .cli import cli_app
-from .gui import gui_app
 
 
 class ArgumentHelpFormatter(argparse.HelpFormatter):
@@ -88,14 +87,10 @@ def parse_arguments() -> tuple[argparse.Namespace, Configuration]:
     arg_parser = argparse.ArgumentParser('Parser2GIS', description='Парсер данных сайта 2GIS', add_help=False,
                                          formatter_class=ArgumentHelpFormatter, argument_default=argparse.SUPPRESS)
 
-    if GUI_ENABLED:
-        main_parser_name = 'Основные аргументы'
-        main_parser_required = False
-    else:
-        main_parser_name = 'Обязательные аргументы'
-        main_parser_required = True
+    # Without full CLI args the web dashboard is launched, so they are optional.
+    main_parser_required = False
 
-    main_parser = arg_parser.add_argument_group(main_parser_name)
+    main_parser = arg_parser.add_argument_group('Основные аргументы')
     main_parser.add_argument('-i', '--url', nargs='+', default=None, required=main_parser_required, help='URL с выдачей')
     main_parser.add_argument('-o', '--output-path', metavar='PATH', default=None, required=main_parser_required, help='Путь до результирующего файла')
     main_parser.add_argument('-f', '--format', metavar='{csv,xlsx,json,html}', choices=['csv', 'xlsx', 'json', 'html'], default=None, required=main_parser_required, help='Формат результирующего файла')
@@ -168,21 +163,10 @@ def main() -> None:
     # Parse command line arguments
     args, command_line_config = parse_arguments()
 
-    # Launch the web dashboard if requested.
-    if getattr(args, 'web', False):
-        from .web import run_server
-        run_server(port=getattr(args, 'web_port', 8666))
+    # Full CLI args present -> run headless CLI; otherwise launch the web dashboard.
+    if args.url is not None and args.output_path is not None and args.format is not None:
+        cli_app(args.url, args.output_path, args.format, command_line_config)
         return
 
-    # Run CLI if we specified all required args, otherwise run GUI.
-    if args.url is None or args.output_path is None or args.format is None:
-        # Load user config and merge it with one created by command line arguments.
-        user_config = Configuration.load_config(auto_create=True)
-        user_config.merge_with(command_line_config)
-        config = user_config
-        app = gui_app
-    else:
-        config = command_line_config
-        app = cli_app
-
-    app(args.url, args.output_path, args.format, config)
+    from .web import run_server
+    run_server(port=getattr(args, 'web_port', 8666))

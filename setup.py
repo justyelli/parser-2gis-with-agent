@@ -102,14 +102,9 @@ if __name__ == '__main__':
             'psutil>=5.4.8',
             'requests>=2.13.0',
             'xlsxwriter>=3.0.5',
+            'Flask>=2.2',
         ],
         extras_require={
-            'gui': [
-                'FreeSimpleGUI>=5.1.0',
-            ],
-            'web': [
-                'Flask>=2.2',
-            ],
             'dev': [
                 'pyinstaller>=6.6.0',
                 'pytest>=7.0',

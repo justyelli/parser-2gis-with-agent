@@ -105,6 +105,23 @@
   .b.gis{background:#eafaef;border-color:#cdeed7;color:var(--gis)}
   .empty{text-align:center;color:var(--muted);padding:70px 16px;font-size:15px;line-height:1.6}
   .empty .big{font-size:42px;margin-bottom:10px}
+  /* Collapsible sidebar sections (generator / advanced) */
+  details.sect{border:1px solid var(--line);border-radius:11px;background:#fbfbfe}
+  details.sect>summary{cursor:pointer;padding:10px 12px;font-size:12.5px;font-weight:700;
+    letter-spacing:.02em;color:#475569;list-style:none;user-select:none;display:flex;align-items:center;gap:7px}
+  details.sect>summary::-webkit-details-marker{display:none}
+  details.sect>summary::before{content:"›";font-size:16px;color:var(--muted);transition:transform .15s}
+  details.sect[open]>summary::before{transform:rotate(90deg)}
+  .sectbody{padding:4px 12px 12px;display:flex;flex-direction:column;gap:9px}
+  .genCities{max-height:150px;overflow:auto;border:1px solid var(--line);border-radius:9px;
+    padding:6px 8px;background:#fff;display:flex;flex-direction:column;gap:2px}
+  .genCities label{display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;padding:2px 0}
+  .genCities input{accent-color:var(--primary)}
+  .field a{color:var(--primary);text-decoration:none;font-size:11px}
+  .field a:hover{text-decoration:underline}
+  .btn-gen{background:#0f172a;color:#fff;padding:10px 14px}
+  .btn-gen:hover{filter:brightness(1.2)}
+  #genRubric{font-size:13px}
   @media (max-width:880px){
     .app{grid-template-columns:1fr}
     aside{position:static;max-height:none;border-right:none;border-bottom:1px solid var(--line)}
@@ -121,6 +138,23 @@
       <textarea id="urls" placeholder="https://2gis.kz/almaty/search/Кафе&#10;https://2gis.ru/moscow/search/Аптеки"></textarea>
       <div class="hint">По одной ссылке 2GIS на строку. Можно несколько городов и рубрик.</div>
     </div>
+
+    <details class="sect" id="gen">
+      <summary>🔗 Генератор ссылок</summary>
+      <div class="sectbody">
+        <label class="field"><span>Запрос</span><input type="text" id="genQuery" placeholder="Кафе" autocomplete="off"></label>
+        <label class="field"><span>Страна</span><select id="genCountry"></select></label>
+        <label class="field"><span>Рубрика (необязательно)</span>
+          <input type="text" id="genRubricSearch" placeholder="Поиск рубрики…" autocomplete="off">
+          <select id="genRubric" size="4"></select>
+        </label>
+        <div class="field">
+          <span>Города · <a href="#" id="genAll">все</a> · <a href="#" id="genNone">сброс</a></span>
+          <div class="genCities" id="genCities"></div>
+        </div>
+        <button type="button" class="btn-gen" id="genAdd">Добавить ссылки</button>
+      </div>
+    </details>
 
     <div class="group">
       <label class="h">Фильтры</label>
@@ -147,6 +181,29 @@
       <label class="check"><input type="checkbox" id="clean" checked> Чистый вид (без мусора)</label>
       <label class="check"><input type="checkbox" id="headless" checked> Скрытый браузер (headless)</label>
     </div>
+
+    <details class="sect" id="adv">
+      <summary>⚙️ Расширенные настройки</summary>
+      <div class="sectbody">
+        <label class="check"><input type="checkbox" id="a_images" checked> Отключить изображения (быстрее)</label>
+        <label class="check"><input type="checkbox" id="a_max"> Запускать браузер развёрнутым</label>
+        <label class="check"><input type="checkbox" id="a_skip404" checked> Точные совпадения (пропуск «не найдено»)</label>
+        <label class="check"><input type="checkbox" id="a_rubrics" checked> Колонка «Рубрики»</label>
+        <label class="check"><input type="checkbox" id="a_comments" checked> Комментарии в ячейках (часы работы и т.д.)</label>
+        <label class="check"><input type="checkbox" id="a_rmempty" checked> Удалять пустые колонки</label>
+        <label class="check"><input type="checkbox" id="a_rmdup" checked> Удалять дубликаты</label>
+        <div class="rowmini">
+          <label class="field"><span>Задержка кликов, мс</span><input type="number" id="a_delay" min="0" step="50" value="0"></label>
+          <label class="field"><span>Колонок на поле</span><input type="number" id="a_cols" min="1" max="5" value="3"></label>
+        </div>
+        <div class="rowmini">
+          <label class="field"><span>Лимит RAM, МБ</span><input type="number" id="a_mem" min="512" step="512" placeholder="авто"></label>
+          <label class="field"><span>Кодировка</span><select id="a_enc">
+            <option value="utf-8-sig">UTF-8 (Excel)</option><option value="utf-8">UTF-8</option>
+            <option value="cp1251">Windows-1251</option></select></label>
+        </div>
+      </div>
+    </details>
 
     <div class="actions-bar">
       <button class="btn-run" id="run">Запустить</button>
@@ -194,6 +251,14 @@
         require_whatsapp:$('f_wa').checked, require_social:$('f_social').checked,
         require_email:$('f_email').checked, require_website:$('f_site').checked,
         min_rating:parseFloat($('f_rating').value||'0'), min_reviews:parseInt($('f_reviews').value||'0',10)
+      },
+      advanced: {
+        disable_images:$('a_images').checked, start_maximized:$('a_max').checked,
+        skip_404_response:$('a_skip404').checked, add_rubrics:$('a_rubrics').checked,
+        add_comments:$('a_comments').checked, remove_empty_columns:$('a_rmempty').checked,
+        remove_duplicates:$('a_rmdup').checked, delay_between_clicks:parseInt($('a_delay').value||'0',10),
+        columns_per_entity:parseInt($('a_cols').value||'3',10),
+        memory_limit:parseInt($('a_mem').value||'0',10), encoding:$('a_enc').value
       }
     };
   }
@@ -283,8 +348,66 @@
 
   $('search').addEventListener('input',renderGrid);
 
-  // Restore state on load: show last results / resume a running job.
+  // ---- Link generator ----
+  var GEN={cities:[],rubrics:[],loaded:false};
+  function isRu(){return $('genCountry').value==='ru';}
+  function renderGenCities(){
+    var cc=$('genCountry').value;
+    var list=GEN.cities.filter(function(c){return c.country_code===cc;});
+    $('genCities').innerHTML=list.length?list.map(function(c){
+      return '<label><input type="checkbox" data-code="'+esc(c.code)+'" data-domain="'+esc(c.domain)+'"> '+esc(c.name)+'</label>';
+    }).join(''):'<div class="hint">нет городов</div>';
+  }
+  function renderGenRubrics(){
+    var term=$('genRubricSearch').value.trim().toLowerCase(), ru=isRu();
+    var list=GEN.rubrics.filter(function(r){return ru?r.is_russian:r.is_non_russian;});
+    if(term)list=list.filter(function(r){return r.label.toLowerCase().indexOf(term)>-1;});
+    list=list.slice(0,300);
+    $('genRubric').innerHTML='<option value="">— без рубрики —</option>'+list.map(function(r){
+      return '<option value="'+esc(r.code)+'">'+esc(r.label)+'</option>';}).join('');
+  }
+  function loadGenerator(){
+    if(GEN.loaded)return;
+    fetch('/api/generator').then(function(r){return r.json()}).then(function(d){
+      GEN.cities=d.cities; GEN.rubrics=d.rubrics; GEN.loaded=true;
+      $('genCountry').innerHTML=d.countries.map(function(c){
+        return '<option value="'+esc(c.code)+'"'+(c.code==='ru'?' selected':'')+'>'+esc(c.name)+'</option>';}).join('');
+      renderGenCities(); renderGenRubrics();
+    }).catch(function(){});
+  }
+  $('gen').addEventListener('toggle',function(){if($('gen').open)loadGenerator();});
+  $('genCountry').addEventListener('change',function(){renderGenCities();renderGenRubrics();});
+  $('genRubricSearch').addEventListener('input',renderGenRubrics);
+  $('genRubric').addEventListener('change',function(){
+    var o=$('genRubric').selectedOptions[0];
+    if(o&&o.value&&!$('genQuery').value.trim())$('genQuery').value=o.textContent;
+  });
+  $('genAll').addEventListener('click',function(e){e.preventDefault();
+    [].forEach.call($('genCities').querySelectorAll('input'),function(i){i.checked=true;});});
+  $('genNone').addEventListener('click',function(e){e.preventDefault();
+    [].forEach.call($('genCities').querySelectorAll('input'),function(i){i.checked=false;});});
+  $('genAdd').addEventListener('click',function(){
+    var q=$('genQuery').value.trim();
+    if(!q){alert('Введите запрос');return;}
+    var checked=$('genCities').querySelectorAll('input:checked');
+    if(!checked.length){alert('Выберите хотя бы один город');return;}
+    var code=$('genRubric').value;
+    var existing=$('urls').value.split('\n').map(function(s){return s.trim();}).filter(Boolean);
+    var seen={}; existing.forEach(function(u){seen[u]=1;});
+    var added=0;
+    [].forEach.call(checked,function(i){
+      var url='https://2gis.'+i.getAttribute('data-domain')+'/'+i.getAttribute('data-code')+
+        '/search/'+encodeURIComponent(q)+(code?'/rubricId/'+code:'')+'/filters/sort=name';
+      if(!seen[url]){existing.push(url);seen[url]=1;added++;}
+    });
+    $('urls').value=existing.join('\n');
+    var btn=$('genAdd'); btn.textContent='Добавлено: '+added;
+    setTimeout(function(){btn.textContent='Добавить ссылки';},1300);
+  });
+
+  // Restore state on load: preload generator data, show last results / resume a job.
   (function init(){
+    loadGenerator();
     fetch('/api/status?cursor=0').then(function(r){return r.json()}).then(function(d){
       cursor=d.cursor; setStatus(d.status);
       if(d.logs && d.logs.length){$('logwrap').style.display='';$('logbox').textContent=d.logs.join('\n');}

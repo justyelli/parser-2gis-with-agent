@@ -1,17 +1,55 @@
 from __future__ import annotations
 
+import json
 import os
 import tempfile
 import webbrowser
+from functools import lru_cache
 from typing import Any
 
 from ..config import Configuration
 from ..logger import logger
+from ..paths import data_path
 from .job import ParseJob
 
 # Download file names per format.
 _DOWNLOAD_NAMES = {'csv': '2gis.csv', 'xlsx': '2gis.xlsx',
                    'json': '2gis.json', 'html': '2gis.html'}
+
+# Country code -> human name (for the link generator).
+COUNTRIES = {
+    'ru': 'Россия', 'kz': 'Казахстан', 'by': 'Беларусь', 'az': 'Азербайджан',
+    'kg': 'Киргизия', 'uz': 'Узбекистан', 'cz': 'Чехия', 'eg': 'Египет',
+    'it': 'Италия', 'sa': 'Саудовская Аравия', 'cy': 'Кипр', 'ae': 'ОАЭ',
+    'cl': 'Чили', 'qa': 'Катар', 'om': 'Оман', 'bh': 'Бахрейн',
+    'kw': 'Кувейт', 'iq': 'Ирак',
+}
+
+
+@lru_cache(maxsize=1)
+def _load_cities() -> list[dict[str, Any]]:
+    with open(data_path() / 'cities.json', 'r', encoding='utf-8') as f:
+        return json.load(f)
+
+
+@lru_cache(maxsize=1)
+def _load_rubrics() -> list[dict[str, Any]]:
+    """Flat list of rubrics for the web generator picker."""
+    with open(data_path() / 'rubrics.json', 'r', encoding='utf-8') as f:
+        rubrics = json.load(f)
+    out = []
+    for node in rubrics.values():
+        # Skip the synthetic root and group headers without a usable label.
+        if node.get('code') in (None, '0') or not node.get('label'):
+            continue
+        out.append({
+            'code': node['code'],
+            'label': node['label'],
+            'is_russian': bool(node.get('isRussian', True)),
+            'is_non_russian': bool(node.get('isNonRussian', True)),
+        })
+    out.sort(key=lambda r: r['label'].lower())
+    return out
 
 
 def _build_config(data: dict[str, Any]) -> Configuration:
@@ -20,6 +58,23 @@ def _build_config(data: dict[str, Any]) -> Configuration:
     config.chrome.headless = bool(data.get('headless', True))
     config.parser.max_records = max(1, int(data.get('max_records', 100)))
     config.writer.csv.clean = bool(data.get('clean', True))
+
+    adv = data.get('advanced', {}) or {}
+    if adv:
+        config.chrome.disable_images = bool(adv.get('disable_images', config.chrome.disable_images))
+        config.chrome.start_maximized = bool(adv.get('start_maximized', config.chrome.start_maximized))
+        if adv.get('memory_limit'):
+            config.chrome.memory_limit = max(1, int(adv['memory_limit']))
+        config.parser.skip_404_response = bool(adv.get('skip_404_response', config.parser.skip_404_response))
+        config.parser.delay_between_clicks = max(0, int(adv.get('delay_between_clicks', 0) or 0))
+        config.writer.csv.add_rubrics = bool(adv.get('add_rubrics', config.writer.csv.add_rubrics))
+        config.writer.csv.add_comments = bool(adv.get('add_comments', config.writer.csv.add_comments))
+        config.writer.csv.remove_empty_columns = bool(adv.get('remove_empty_columns', config.writer.csv.remove_empty_columns))
+        config.writer.csv.remove_duplicates = bool(adv.get('remove_duplicates', config.writer.csv.remove_duplicates))
+        if adv.get('columns_per_entity'):
+            config.writer.csv.columns_per_entity = min(5, max(1, int(adv['columns_per_entity'])))
+        if adv.get('encoding'):
+            config.writer.encoding = str(adv['encoding'])
 
     f = data.get('filters', {}) or {}
     config.filters.dedup_franchises = bool(f.get('dedup_franchises'))
@@ -87,6 +142,18 @@ def create_app():
     @app.route('/api/results')
     def api_results():
         return jsonify({'records': job.results()})
+
+    @app.route('/api/generator')
+    def api_generator():
+        """Data for the link generator: countries, cities, rubrics."""
+        cities = [
+            {'name': c['name'], 'code': c['code'], 'domain': c['domain'],
+             'country_code': c['country_code']}
+            for c in _load_cities()
+        ]
+        countries = [{'code': k, 'name': v} for k, v in COUNTRIES.items()]
+        countries.sort(key=lambda c: c['name'])
+        return jsonify({'countries': countries, 'cities': cities, 'rubrics': _load_rubrics()})
 
     @app.route('/api/download')
     def api_download():
