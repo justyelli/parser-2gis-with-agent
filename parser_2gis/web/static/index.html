@@ -142,16 +142,19 @@
     <details class="sect" id="gen">
       <summary>🔗 Генератор ссылок</summary>
       <div class="sectbody">
-        <label class="field"><span>Запрос</span><input type="text" id="genQuery" placeholder="Кафе" autocomplete="off"></label>
         <label class="field"><span>Страна</span><select id="genCountry"></select></label>
-        <label class="field"><span>Рубрика (необязательно)</span>
-          <input type="text" id="genRubricSearch" placeholder="Поиск рубрики…" autocomplete="off">
-          <select id="genRubric" size="4"></select>
-        </label>
         <div class="field">
           <span>Города · <a href="#" id="genAll">все</a> · <a href="#" id="genNone">сброс</a></span>
           <div class="genCities" id="genCities"></div>
         </div>
+        <label class="field"><span>Запрос</span>
+          <input type="text" id="genQuery" placeholder="Начните печатать: Кафе, Аптеки…" autocomplete="off" list="genQueryList">
+          <datalist id="genQueryList"></datalist>
+        </label>
+        <label class="field"><span>Рубрика (необязательно)</span>
+          <input type="text" id="genRubricSearch" placeholder="Поиск рубрики…" autocomplete="off">
+          <select id="genRubric" size="4"></select>
+        </label>
         <button type="button" class="btn-gen" id="genAdd">Добавить ссылки</button>
       </div>
     </details>
@@ -358,25 +361,31 @@
       return '<label><input type="checkbox" data-code="'+esc(c.code)+'" data-domain="'+esc(c.domain)+'"> '+esc(c.name)+'</label>';
     }).join(''):'<div class="hint">нет городов</div>';
   }
+  function curRubrics(){var ru=isRu();return GEN.rubrics.filter(function(r){return ru?r.is_russian:r.is_non_russian;});}
   function renderGenRubrics(){
-    var term=$('genRubricSearch').value.trim().toLowerCase(), ru=isRu();
-    var list=GEN.rubrics.filter(function(r){return ru?r.is_russian:r.is_non_russian;});
+    var term=$('genRubricSearch').value.trim().toLowerCase();
+    var list=curRubrics();
     if(term)list=list.filter(function(r){return r.label.toLowerCase().indexOf(term)>-1;});
     list=list.slice(0,300);
     $('genRubric').innerHTML='<option value="">— без рубрики —</option>'+list.map(function(r){
       return '<option value="'+esc(r.code)+'">'+esc(r.label)+'</option>';}).join('');
+  }
+  function renderGenQueryList(){
+    // Suggestions shown while typing the query (native datalist autocomplete).
+    $('genQueryList').innerHTML=curRubrics().map(function(r){
+      return '<option value="'+esc(r.label)+'">';}).join('');
   }
   function loadGenerator(){
     if(GEN.loaded)return;
     fetch('/api/generator').then(function(r){return r.json()}).then(function(d){
       GEN.cities=d.cities; GEN.rubrics=d.rubrics; GEN.loaded=true;
       $('genCountry').innerHTML=d.countries.map(function(c){
-        return '<option value="'+esc(c.code)+'"'+(c.code==='ru'?' selected':'')+'>'+esc(c.name)+'</option>';}).join('');
-      renderGenCities(); renderGenRubrics();
+        return '<option value="'+esc(c.code)+'"'+(c.code==='kz'?' selected':'')+'>'+esc(c.name)+'</option>';}).join('');
+      renderGenCities(); renderGenRubrics(); renderGenQueryList();
     }).catch(function(){});
   }
   $('gen').addEventListener('toggle',function(){if($('gen').open)loadGenerator();});
-  $('genCountry').addEventListener('change',function(){renderGenCities();renderGenRubrics();});
+  $('genCountry').addEventListener('change',function(){renderGenCities();renderGenRubrics();renderGenQueryList();});
   $('genRubricSearch').addEventListener('input',renderGenRubrics);
   $('genRubric').addEventListener('change',function(){
     var o=$('genRubric').selectedOptions[0];
