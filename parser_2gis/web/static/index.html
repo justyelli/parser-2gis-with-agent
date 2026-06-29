@@ -116,6 +116,13 @@
   .b.tg{background:#e8f4fb;border-color:#cfe9f8;color:#1b7fb8}
   .b.ig{background:#fdeef5;border-color:#f7d3e4;color:var(--ig)}
   .b.gis{background:#eafaef;border-color:#cdeed7;color:var(--gis)}
+  .card.done{opacity:.55}
+  .card.done:hover{opacity:.85}
+  .cardfoot{display:flex;gap:7px;align-items:center;margin-top:8px;padding-top:9px;border-top:1px dashed var(--line)}
+  .markbtn{flex:none;font-size:12px;font-weight:600;padding:6px 10px;border-radius:8px;
+    border:1px solid var(--line);background:#fff;color:var(--muted);cursor:pointer}
+  .markbtn.on{background:#eaf7ee;color:var(--ok);border-color:#cdeed7}
+  .note{flex:1;min-width:0;font-size:12.5px;padding:6px 9px;border:1px solid var(--line);border-radius:8px}
   .empty{text-align:center;color:var(--muted);padding:70px 16px;font-size:15px;line-height:1.6}
   .empty .big{font-size:42px;margin-bottom:10px}
   /* Collapsible sidebar sections (generator / advanced) */
@@ -177,6 +184,12 @@
   .histItem .hbtn:hover{filter:brightness(.96)}
   .histItem .hbtn.open{background:var(--primary);color:#fff;border-color:transparent}
   .histItem .hdel{margin-left:auto;color:var(--danger);background:none;border:none;cursor:pointer;font-size:16px;padding:0 4px}
+  .histbar{margin-bottom:2px}
+  #histMerge{width:100%;background:#eef2ff;color:var(--primary);border:1px solid #d8ddfb;
+    padding:8px 10px;font-size:12px;font-weight:600;border-radius:9px;cursor:pointer}
+  #histMerge:hover{background:#e3e8fe}
+  .hsel{display:flex;align-items:center;gap:6px;cursor:pointer}
+  .hsel input{accent-color:var(--primary);flex:none}
   @media (max-width:1024px){
     .app{grid-template-columns:1fr}
     /* Drop the scroll container around the sidebar so native <select> pickers
@@ -413,6 +426,11 @@
     return 'https://wa.me/'+number+(text?('?text='+encodeURIComponent(text)):'');
   }
 
+  // Per-business contacted status + notes (persisted, keyed by 2GIS firm id).
+  var CONTACTS={}; try{CONTACTS=JSON.parse(localStorage.getItem('p2gis_contacts')||'{}');}catch(_){CONTACTS={};}
+  function saveContacts(){try{localStorage.setItem('p2gis_contacts',JSON.stringify(CONTACTS));}catch(_){}}
+  function bizId(r){var u=r.url||''; var m=u.split('/firm/')[1]; return m||u;}
+
   function renderCard(r){
     var c=r.contacts||{}, b=[];
     if(c.whatsapp) b.push('<a class="b wa" href="#" data-wa="'+esc(digits(c.whatsapp))+'">WhatsApp</a>');
@@ -426,10 +444,14 @@
     var rub=r.rubrics&&r.rubrics.length?'<div class="rubrics">'+esc(r.rubrics.join(' · '))+'</div>':'';
     var meta=[]; if(r.address)meta.push(esc(r.address)); if(r.city)meta.push(esc(r.city));
     var blob=((r.name||'')+' '+(r.address||'')+' '+(r.city||'')+' '+((r.rubrics||[]).join(' '))+' '+(c.phone||'')).toLowerCase();
-    return '<article class="card" data-s="'+esc(blob)+'">'+
+    var id=bizId(r), st=CONTACTS[id]||{}, done=st.status==='contacted';
+    var foot='<div class="cardfoot">'+
+      '<button class="markbtn'+(done?' on':'')+'" data-id="'+esc(id)+'">'+(done?'✓ Связались':'Связались')+'</button>'+
+      '<input class="note" data-id="'+esc(id)+'" placeholder="Заметка…" value="'+esc(st.note||'')+'"></div>';
+    return '<article class="card'+(done?' done':'')+'" data-s="'+esc(blob)+'">'+
       '<div class="card-head"><h2>'+esc(r.name)+'</h2>'+rating+'</div>'+rub+
       (meta.length?'<div class="meta">'+meta.join(', ')+'</div>':'')+
-      '<div class="acts">'+b.join('')+'</div></article>';
+      '<div class="acts">'+b.join('')+'</div>'+foot+'</article>';
   }
 
   function sortRecords(arr){
@@ -523,14 +545,17 @@
   function urlsSummary(urls){
     if(!urls||!urls.length)return '';
     var u=urls[0].replace(/^https?:\/\//,'');
+    try{u=decodeURIComponent(u);}catch(_){}
     return u+(urls.length>1?(' +'+(urls.length-1)+' ещё'):'');
   }
   function renderHistory(items){
     var el=$('histList');
     if(!items.length){el.innerHTML='<div class="hint">Пока пусто. Завершённые парсинги сохранятся здесь.</div>';return;}
-    el.innerHTML=items.map(function(it){
+    var bar=items.length>1?'<div class="histbar"><button id="histMerge" title="Собрать выбранные в один список и убрать дубли по телефону">⛁ Объединить выбранные (дедуп)</button></div>':'';
+    el.innerHTML=bar+items.map(function(it){
       return '<div class="histItem">'+
-        '<div class="hh"><span class="ht">'+esc(fmtDate(it.created_at))+' · '+it.count+' зап.</span>'+
+        '<div class="hh"><label class="hsel"><input type="checkbox" class="hcheck" data-id="'+esc(it.id)+'"> '+
+          esc(fmtDate(it.created_at))+' · '+it.count+' зап.</label>'+
         '<button class="hdel" title="Удалить" data-del="'+esc(it.id)+'">×</button></div>'+
         '<div class="hu">'+esc(urlsSummary(it.urls))+'</div>'+
         '<div class="hb"><button class="hbtn open" data-open="'+esc(it.id)+'">Открыть</button>'+
@@ -543,15 +568,27 @@
     fetch('/api/history').then(function(r){return r.json()})
       .then(function(d){renderHistory(d.items||[]);}).catch(function(){});
   }
+  function openHist(id,label){
+    fetch('/api/history/'+id+'/results').then(function(r){return r.json()}).then(function(res){
+      records=res.records||[]; histId=id; renderGrid(); dlEnabled(records.length>0);
+      $('count').textContent=records.length+' '+(label||'(из истории)');
+      var g=$('grid'); if(g.scrollIntoView)g.scrollIntoView({behavior:'smooth',block:'start'});
+    });
+  }
   $('histList').addEventListener('click',function(e){
+    if(e.target.id==='histMerge'){
+      var ids=[].map.call($('histList').querySelectorAll('.hcheck:checked'),function(c){return c.getAttribute('data-id');});
+      if(!ids.length){alert('Отметьте галочками записи для объединения');return;}
+      fetch('/api/history/merge',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ids:ids})})
+        .then(function(r){return r.json()}).then(function(d){
+          if(!d.ok){alert(d.error||'Ошибка объединения');return;}
+          loadHistory(); openHist(d.id,'(объединено, дубли убраны)');
+        }).catch(function(){alert('Ошибка объединения');});
+      return;
+    }
     var open=e.target.closest('[data-open]'), del=e.target.closest('[data-del]'), dl=e.target.closest('[data-dl]');
     if(open){
-      var id=open.getAttribute('data-open');
-      fetch('/api/history/'+id+'/results').then(function(r){return r.json()}).then(function(res){
-        records=res.records||[]; histId=id; renderGrid(); dlEnabled(records.length>0);
-        $('count').textContent=records.length+' (из истории)';
-        var g=$('grid'); if(g.scrollIntoView)g.scrollIntoView({behavior:'smooth',block:'start'});
-      });
+      openHist(open.getAttribute('data-open'));
     } else if(dl){
       window.location='/api/history/'+dl.getAttribute('data-dl')+'/download?format='+dl.getAttribute('data-fmt');
     } else if(del){
@@ -578,11 +615,24 @@
   });
   (function(){var saved='auto'; try{saved=localStorage.getItem('grid_cols')||'auto';}catch(_){} applyCols(saved);})();
 
-  // WhatsApp button: open chosen mode (Web / app) with a random message template.
+  // WhatsApp button + "Связались" toggle.
   $('grid').addEventListener('click',function(e){
-    var a=e.target.closest('.b.wa'); if(!a)return;
-    e.preventDefault();
-    var num=a.getAttribute('data-wa'); if(num) window.open(waUrl(num),'_blank','noopener');
+    var a=e.target.closest('.b.wa');
+    if(a){e.preventDefault(); var num=a.getAttribute('data-wa'); if(num)window.open(waUrl(num),'_blank','noopener'); return;}
+    var mark=e.target.closest('.markbtn');
+    if(mark){
+      var id=mark.getAttribute('data-id'), st=CONTACTS[id]||{};
+      st.status=(st.status==='contacted')?'':'contacted'; CONTACTS[id]=st; saveContacts();
+      var done=st.status==='contacted', card=mark.closest('.card');
+      if(card)card.classList.toggle('done',done);
+      mark.classList.toggle('on',done); mark.textContent=done?'✓ Связались':'Связались';
+    }
+  });
+  // Per-card note input.
+  $('grid').addEventListener('input',function(e){
+    var n=e.target.closest('.note'); if(!n)return;
+    var id=n.getAttribute('data-id'), st=CONTACTS[id]||{};
+    st.note=n.value; CONTACTS[id]=st; saveContacts();
   });
   // Persist WhatsApp settings across reloads.
   try{var sm=localStorage.getItem('wa_mode'); if(sm)$('waMode').value=sm;}catch(_){}

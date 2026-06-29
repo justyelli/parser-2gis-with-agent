@@ -215,6 +215,18 @@ def create_app():
             logger.error('Ошибка экспорта истории: %s', e)
             return jsonify({'ok': False, 'error': str(e)}), 500
 
+    @app.route('/api/history/merge', methods=['POST'])
+    def api_history_merge():
+        data = request.get_json(force=True, silent=True) or {}
+        ids = [str(i) for i in (data.get('ids') or [])]
+        if not ids:
+            return jsonify({'ok': False, 'error': 'Не выбраны записи'}), 400
+        result = history.merge_and_save(ids)
+        if not result:
+            return jsonify({'ok': False, 'error': 'Нет данных для объединения'}), 400
+        new_id, count = result
+        return jsonify({'ok': True, 'id': new_id, 'count': count})
+
     @app.route('/api/history/<hid>', methods=['DELETE'])
     def api_history_delete(hid):
         return jsonify({'ok': history.delete(hid)})

@@ -90,6 +90,35 @@ class History:
                 out.append(record)
         return out
 
+    def merge_and_save(self, ids: list[str]) -> Optional[tuple[str, int]]:
+        """Combine several history entries, dedup by phone (or firm id when no
+        phone), and save the result as a new entry. Returns (new_id, count)."""
+        seen: set[str] = set()
+        docs: list[Any] = []
+        urls: list[str] = []
+        writer: dict = {}
+        for hid in ids:
+            d = self._load(hid)
+            if not d:
+                continue
+            if not writer:
+                writer = d.get('writer', {}) or {}
+            urls.extend(d.get('urls', []) or [])
+            for doc in d.get('docs', []):
+                record = extract_record(doc)
+                if not record:
+                    continue
+                phone = re.sub(r'\D', '', (record.get('contacts') or {}).get('phone', '') or '')
+                key = 'p:' + phone if phone else 'f:' + (record.get('url') or '').split('/firm/')[-1]
+                if key in seen:
+                    continue
+                seen.add(key)
+                docs.append(doc)
+        if not docs:
+            return None
+        new_id = self.save(sorted(set(urls)), docs, writer)
+        return (new_id, len(docs)) if new_id else None
+
     def delete(self, hid: str) -> bool:
         if not _ID_RE.match(hid or ''):
             return False
