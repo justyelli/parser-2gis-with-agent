@@ -69,10 +69,10 @@
   #search{flex:1;min-width:180px;padding:10px 13px;border:1px solid var(--line);border-radius:11px;
     background:#fff;font:inherit;outline:none}
   #search:focus{border-color:var(--primary);box-shadow:0 0 0 4px rgba(99,102,241,.13)}
-  .dl{display:flex;gap:8px;align-items:center}
-  .dl select{width:auto;padding:9px 11px}
-  .btn-dl{background:#0f172a;color:#fff;padding:10px 14px}
-  .btn-dl:hover:not(:disabled){filter:brightness(1.15)}
+  .dl{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  .dl-label{font-size:13px;color:var(--muted);font-weight:600}
+  .dl-fmt{background:#0f172a;color:#fff;padding:9px 13px;font-size:12.5px;font-weight:650;border-radius:9px}
+  .dl-fmt:hover:not(:disabled){filter:brightness(1.3)}
   .content{padding:clamp(16px,3vw,28px);min-width:0}
   details.log{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
     margin-bottom:18px;box-shadow:var(--shadow)}
@@ -264,12 +264,12 @@
       <span class="pill" id="pill"><span class="dot"></span><span id="pilltext">Готов</span></span>
       <span id="count"></span>
       <input id="search" type="search" placeholder="Поиск в результатах…" autocomplete="off">
-      <div class="dl">
-        <select id="format" title="Формат файла">
-          <option value="csv">CSV</option><option value="xlsx">XLSX</option>
-          <option value="json">JSON</option><option value="html">HTML</option>
-        </select>
-        <button class="btn-dl" id="download" disabled>Скачать</button>
+      <div class="dl" id="dlbar">
+        <span class="dl-label">Скачать:</span>
+        <button class="dl-fmt" data-fmt="csv" disabled>CSV</button>
+        <button class="dl-fmt" data-fmt="xlsx" disabled>XLSX</button>
+        <button class="dl-fmt" data-fmt="json" disabled>JSON</button>
+        <button class="dl-fmt" data-fmt="html" disabled>HTML</button>
       </div>
     </div>
     <div class="content">
@@ -381,7 +381,7 @@
         clearInterval(poll); poll=null;
         $('run').style.display=''; $('stop').style.display='none';
         fetch('/api/results').then(function(r){return r.json()}).then(function(res){
-          records=res.records||[]; renderGrid(); $('download').disabled=records.length===0;
+          records=res.records||[]; renderGrid(); dlEnabled(records.length>0);
         });
       }
     }).catch(function(){});
@@ -391,7 +391,7 @@
     var p=payload();
     if(!p.urls.filter(function(u){return u.trim()}).length){alert('Укажите хотя бы одну ссылку 2GIS');return;}
     $('logbox').textContent=''; $('logwrap').style.display=''; $('logwrap').open=true;
-    $('download').disabled=true; records=[]; renderGrid(); cursor=0;
+    dlEnabled(false); records=[]; renderGrid(); cursor=0;
     fetch('/api/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)})
       .then(function(r){return r.json()}).then(function(d){
         if(!d.ok){alert(d.error||'Ошибка запуска');return;}
@@ -405,9 +405,10 @@
     fetch('/api/stop',{method:'POST'}).finally(function(){setTimeout(function(){$('stop').disabled=false},800)});
   });
 
-  $('download').addEventListener('click',function(){
-    if($('download').disabled)return;
-    window.location='/api/download?format='+encodeURIComponent($('format').value);
+  function dlEnabled(on){[].forEach.call(document.querySelectorAll('.dl-fmt'),function(b){b.disabled=!on;});}
+  $('dlbar').addEventListener('click',function(e){
+    var b=e.target.closest('.dl-fmt'); if(!b||b.disabled)return;
+    window.location='/api/download?format='+encodeURIComponent(b.getAttribute('data-fmt'));
   });
 
   $('search').addEventListener('input',renderGrid);
@@ -509,7 +510,7 @@
       if(d.running){$('run').style.display='none';$('stop').style.display='';
         if(poll)clearInterval(poll);poll=setInterval(tick,700);}
       if(d.count){fetch('/api/results').then(function(r){return r.json()}).then(function(res){
-        records=res.records||[];renderGrid();$('download').disabled=records.length===0;});}
+        records=res.records||[];renderGrid();dlEnabled(records.length>0);});}
     }).catch(function(){});
   })();
 })();
