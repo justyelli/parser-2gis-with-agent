@@ -21,8 +21,6 @@
 
 **Parser2GIS** - парсер сайта [2GIS](https://2gis.ru/) с помощью браузера [Google Chrome](https://google.com/chrome).
 
-<img alt="Screenshot" src="https://user-images.githubusercontent.com/20641837/174098241-7c0874aa-e70d-4978-86dc-7fd90af44603.png"/>
-
 ## ℹ️ Описание
 
 Парсер для автоматического сбора базы адресов и контактов предприятий, которые работают на территории
