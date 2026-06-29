@@ -1,6 +1,6 @@
 # История изменений
 
-## [Невошедшее]
+## [2.0.0] - 2026-06-29
 
 ### Форк (29-06-2026)
 Независимый форк проекта [parser-2gis](https://github.com/interlark/parser-2gis)
@@ -132,7 +132,7 @@
 - Первый релиз.
 
 
-[Невошедшее]: https://github.com/interlark/parser-2gis/compare/v1.2.1...HEAD
+[2.0.0]: https://github.com/Eroloft/parser-2gis-new/releases/tag/v2.0.0
 [1.2.1]: https://github.com/interlark/parser-2gis/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/interlark/parser-2gis/compare/v1.1.2...v1.2.0
 [1.1.2]: https://github.com/interlark/parser-2gis/compare/v1.1.1...v1.1.2

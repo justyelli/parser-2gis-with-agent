@@ -15,10 +15,6 @@ jobs:
             dist: linux
             ext:
 
-          - os: macos-13
-            dist: macos
-            ext:
-
           - os: macos-14
             dist: macos-arm
             ext:

@@ -16,9 +16,6 @@ jobs:
           - os: ubuntu-22.04
             dist: linux
 
-          - os: macos-13
-            dist: macos
-
           - os: macos-14
             dist: macos-arm
 
