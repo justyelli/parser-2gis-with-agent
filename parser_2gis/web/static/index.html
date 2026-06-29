@@ -89,6 +89,14 @@
     line-height:1.6;color:#334155;background:#fafbfd;border-top:1px solid var(--line);
     padding:12px 16px;max-height:240px;overflow:auto;white-space:pre-wrap;word-break:break-word}
   .grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(310px,1fr))}
+  .grid.cols-1{grid-template-columns:1fr}
+  .grid.cols-2{grid-template-columns:repeat(2,1fr)}
+  .grid.cols-3{grid-template-columns:repeat(3,1fr)}
+  .viewbtns{display:flex;gap:3px;background:#eef0f6;border-radius:9px;padding:3px}
+  .viewbtns button{background:none;border:none;padding:6px 7px;border-radius:7px;cursor:pointer;
+    color:var(--muted);display:flex;align-items:center}
+  .viewbtns button.on{background:#fff;color:var(--primary);box-shadow:0 1px 2px rgba(16,24,40,.08)}
+  .viewbtns svg{display:block}
   .card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:17px 17px 15px;
     box-shadow:var(--shadow);display:flex;flex-direction:column;gap:8px;
     transition:transform .12s,box-shadow .12s}
@@ -318,6 +326,11 @@
         <option value="reviews_asc">Отзывов ↑</option>
         <option value="rubric_asc">По рубрике А–Я</option>
       </select>
+      <div class="viewbtns" id="viewbtns">
+        <button data-cols="1" title="1 колонка"><svg width="16" height="16" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2" fill="currentColor"/></svg></button>
+        <button data-cols="2" title="2 колонки"><svg width="16" height="16" viewBox="0 0 16 16"><rect x="2" y="2" width="5" height="12" rx="1.5" fill="currentColor"/><rect x="9" y="2" width="5" height="12" rx="1.5" fill="currentColor"/></svg></button>
+        <button data-cols="3" title="3 колонки"><svg width="16" height="16" viewBox="0 0 16 16"><rect x="1.5" y="2" width="3.2" height="12" rx="1" fill="currentColor"/><rect x="6.4" y="2" width="3.2" height="12" rx="1" fill="currentColor"/><rect x="11.3" y="2" width="3.2" height="12" rx="1" fill="currentColor"/></svg></button>
+      </div>
       <div class="dl" id="dlbar">
         <span class="dl-label">Скачать:</span>
         <button class="dl-fmt" data-fmt="csv" disabled>CSV</button>
@@ -549,6 +562,21 @@
 
   $('search').addEventListener('input',renderGrid);
   $('sort').addEventListener('change',renderGrid);
+
+  // Grid columns view (1 / 2 / 3 / auto)
+  function applyCols(c){
+    var g=$('grid'); g.classList.remove('cols-1','cols-2','cols-3');
+    if(c==='1'||c==='2'||c==='3')g.classList.add('cols-'+c);
+    [].forEach.call($('viewbtns').querySelectorAll('button'),function(b){
+      b.classList.toggle('on',b.getAttribute('data-cols')===c);});
+    try{localStorage.setItem('grid_cols',c);}catch(_){}
+  }
+  $('viewbtns').addEventListener('click',function(e){
+    var b=e.target.closest('button'); if(!b)return;
+    var c=b.getAttribute('data-cols');
+    applyCols($('grid').classList.contains('cols-'+c)?'auto':c);
+  });
+  (function(){var saved='auto'; try{saved=localStorage.getItem('grid_cols')||'auto';}catch(_){} applyCols(saved);})();
 
   // WhatsApp button: open chosen mode (Web / app) with a random message template.
   $('grid').addEventListener('click',function(e){
