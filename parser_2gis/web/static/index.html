@@ -117,6 +117,22 @@
     padding:6px 8px;background:#fff;display:flex;flex-direction:column;gap:2px}
   .genCities label{display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;padding:2px 0}
   .genCities input{accent-color:var(--primary)}
+  /* Cities multi-select dropdown (opens on click, like the country select) */
+  .msel{position:relative}
+  .msel-btn{width:100%;text-align:left;background:#fff;border:1px solid var(--line);border-radius:10px;
+    padding:10px 12px;font:inherit;font-weight:500;color:var(--text);cursor:pointer;
+    display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .msel-btn::after{content:"▾";color:var(--muted)}
+  .msel-btn:hover{border-color:#cdd1dd}
+  .msel.open .msel-btn{border-color:var(--primary);box-shadow:0 0 0 4px rgba(99,102,241,.13)}
+  .msel.open .msel-btn::after{content:"▴"}
+  .msel-panel{display:none;position:absolute;left:0;right:0;top:calc(100% + 5px);z-index:20;
+    background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:8px}
+  .msel.open .msel-panel{display:block}
+  .msel-tools{font-size:11px;padding:0 2px 7px;color:var(--muted)}
+  .msel-tools a{color:var(--primary);text-decoration:none}
+  .msel-tools a:hover{text-decoration:underline}
+  .msel-panel .genCities{border:none;border-radius:0;padding:0;max-height:210px}
   .field a{color:var(--primary);text-decoration:none;font-size:11px}
   .field a:hover{text-decoration:underline}
   .btn-gen{background:#0f172a;color:#fff;padding:10px 14px}
@@ -144,8 +160,14 @@
       <div class="sectbody">
         <label class="field"><span>Страна</span><select id="genCountry"></select></label>
         <div class="field">
-          <span>Города · <a href="#" id="genAll">все</a> · <a href="#" id="genNone">сброс</a></span>
-          <div class="genCities" id="genCities"></div>
+          <span>Города</span>
+          <div class="msel" id="genCitiesWrap">
+            <button type="button" class="msel-btn" id="genCitiesBtn">Выберите города</button>
+            <div class="msel-panel" id="genCitiesPanel">
+              <div class="msel-tools"><a href="#" id="genAll">выбрать все</a> · <a href="#" id="genNone">сбросить</a></div>
+              <div class="genCities" id="genCities"></div>
+            </div>
+          </div>
         </div>
         <label class="field"><span>Запрос</span>
           <input type="text" id="genQuery" placeholder="Начните печатать: Кафе, Аптеки…" autocomplete="off" list="genQueryList">
@@ -360,6 +382,11 @@
     $('genCities').innerHTML=list.length?list.map(function(c){
       return '<label><input type="checkbox" data-code="'+esc(c.code)+'" data-domain="'+esc(c.domain)+'"> '+esc(c.name)+'</label>';
     }).join(''):'<div class="hint">нет городов</div>';
+    updateCitiesLabel();
+  }
+  function updateCitiesLabel(){
+    var n=$('genCities').querySelectorAll('input:checked').length;
+    $('genCitiesBtn').textContent=n?('Выбрано городов: '+n):'Выберите города';
   }
   function curRubrics(){var ru=isRu();return GEN.rubrics.filter(function(r){return ru?r.is_russian:r.is_non_russian;});}
   function renderGenRubrics(){
@@ -391,10 +418,16 @@
     var o=$('genRubric').selectedOptions[0];
     if(o&&o.value&&!$('genQuery').value.trim())$('genQuery').value=o.textContent;
   });
+  // Cities dropdown: open on click, keep multi-select, close on outside click.
+  $('genCitiesBtn').addEventListener('click',function(e){
+    e.stopPropagation(); $('genCitiesWrap').classList.toggle('open');});
+  $('genCitiesPanel').addEventListener('click',function(e){e.stopPropagation();});
+  $('genCities').addEventListener('change',updateCitiesLabel);
+  document.addEventListener('click',function(){$('genCitiesWrap').classList.remove('open');});
   $('genAll').addEventListener('click',function(e){e.preventDefault();
-    [].forEach.call($('genCities').querySelectorAll('input'),function(i){i.checked=true;});});
+    [].forEach.call($('genCities').querySelectorAll('input'),function(i){i.checked=true;});updateCitiesLabel();});
   $('genNone').addEventListener('click',function(e){e.preventDefault();
-    [].forEach.call($('genCities').querySelectorAll('input'),function(i){i.checked=false;});});
+    [].forEach.call($('genCities').querySelectorAll('input'),function(i){i.checked=false;});updateCitiesLabel();});
   $('genAdd').addEventListener('click',function(){
     var q=$('genQuery').value.trim();
     if(!q){alert('Введите запрос');return;}
