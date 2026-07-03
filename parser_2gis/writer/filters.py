@@ -21,6 +21,7 @@ SOCIAL_TYPES = {
 @dataclass
 class _Features:
     """Filterable features extracted from a catalog document."""
+    item_id: Optional[str]
     org_id: Optional[str]
     has_phone: bool
     has_whatsapp: bool
@@ -53,7 +54,12 @@ def extract_features(catalog_doc: Any) -> Optional[_Features]:
         rating = catalog_item.reviews.general_rating or 0.0
         reviews = catalog_item.reviews.general_review_count or 0
 
+    # Firm id (part before the first "_") identifies the establishment; the same
+    # place surfacing under several niches shares it, so we dedup on it.
+    item_id = catalog_item.id.split('_')[0] if catalog_item.id else None
+
     return _Features(
+        item_id=item_id,
         org_id=catalog_item.org.id if catalog_item.org else None,
         has_phone='phone' in contact_types,
         has_whatsapp='whatsapp' in contact_types,
@@ -68,7 +74,8 @@ def extract_features(catalog_doc: Any) -> Optional[_Features]:
 def any_filter_enabled(options: FilterOptions) -> bool:
     """Whether at least one filter is active (used to skip wrapping otherwise)."""
     return any([
-        options.dedup_franchises, options.require_phone, options.require_whatsapp,
+        options.dedup_franchises, options.dedup_across_niches,
+        options.require_phone, options.require_whatsapp,
         options.require_social, options.require_email, options.require_website,
         options.min_rating > 0, options.min_reviews > 0,
     ])
@@ -88,6 +95,7 @@ class FilterWriter(FileWriter):
         self._inner = inner
         self._filter_options = options
         self._seen_orgs: set[str] = set()
+        self._seen_items: set[str] = set()
 
     def _passes(self, f: _Features) -> bool:
         o = self._filter_options
@@ -112,6 +120,10 @@ class FilterWriter(FileWriter):
         if features is not None:
             if not self._passes(features):
                 return
+            if self._filter_options.dedup_across_niches and features.item_id:
+                if features.item_id in self._seen_items:
+                    return
+                self._seen_items.add(features.item_id)
             if self._filter_options.dedup_franchises and features.org_id:
                 if features.org_id in self._seen_orgs:
                     return

@@ -280,6 +280,7 @@
     <details class="sect" id="filt">
       <summary data-i18n="filters_title">🧹 Сүзгілер</summary>
       <div class="sectbody">
+        <label class="check"><input type="checkbox" id="f_dedup_niches" checked> <span data-i18n="f_dedup_niches">Ниша аралық қайталанусыз (1 мекеме — 1 рет)</span></label>
         <label class="check"><input type="checkbox" id="f_dedup"> <span data-i18n="f_dedup">Франшизасыз (ұйымға 1)</span></label>
         <label class="check"><input type="checkbox" id="f_phone"> <span data-i18n="f_phone">Тек телефоны барлар</span></label>
         <label class="check"><input type="checkbox" id="f_wa"> <span data-i18n="f_wa">Тек WhatsApp барлар</span></label>
@@ -392,7 +393,7 @@
       rubric_search_ph:'Айдарды іздеу…', wa_title:'💬 WhatsApp-тарату', wa_mode_label:'Қайда ашу',
       wa_web:'WhatsApp Web (браузерде)', wa_app:'Қосымша / телефон (wa.me)', wa_templates:'Хабарлама үлгілері',
       wa_add:'+ Үлгі қосу', wa_hint:'Карточкадағы «WhatsApp» басқанда чат кездейсоқ үлгімен ашылады. Бірнеше үлгі → әр мекемеге өз нұсқасы.',
-      filters_title:'🧹 Сүзгілер', f_dedup:'Франшизасыз (ұйымға 1)', f_phone:'Тек телефоны барлар',
+      filters_title:'🧹 Сүзгілер', f_dedup_niches:'Ниша аралық қайталанусыз (1 мекеме — 1 рет)', f_dedup:'Франшизасыз (ұйымға 1)', f_phone:'Тек телефоны барлар',
       f_wa:'Тек WhatsApp барлар', f_social:'Тек әлеуметтік желілермен', f_email:'Тек e-mail барлар',
       f_site:'Тек сайты барлар', rating_from:'Рейтинг (бастап)', reviews_from:'Пікірлер (бастап)',
       params_title:'📋 Параметрлер', maxrec:'Бір URL-ден макс. жазба', clean:'Таза көрініс (қоқыссыз)',
@@ -425,7 +426,7 @@
       rubric_search_ph:'Поиск рубрики…', wa_title:'💬 WhatsApp-рассылка', wa_mode_label:'Открывать в',
       wa_web:'WhatsApp Web (в браузере)', wa_app:'Приложение / телефон (wa.me)', wa_templates:'Шаблоны сообщений',
       wa_add:'+ Добавить шаблон', wa_hint:'При клике на «WhatsApp» в карточке откроется чат с подставленным случайным шаблоном. Несколько шаблонов → каждому заведению свой вариант.',
-      filters_title:'🧹 Фильтры', f_dedup:'Без франшиз (1 на организацию)', f_phone:'Только с телефоном',
+      filters_title:'🧹 Фильтры', f_dedup_niches:'Без повторов между нишами (1 заведение — 1 раз)', f_dedup:'Без франшиз (1 на организацию)', f_phone:'Только с телефоном',
       f_wa:'Только с WhatsApp', f_social:'Только с соцсетями', f_email:'Только с e-mail', f_site:'Только с сайтом',
       rating_from:'Рейтинг от', reviews_from:'Отзывов от', params_title:'📋 Параметры',
       maxrec:'Макс. записей с одного URL', clean:'Чистый вид (без мусора)', headless:'Скрытый браузер (headless)',
@@ -482,7 +483,7 @@
       headless: $('headless').checked,
       clean: $('clean').checked,
       filters: {
-        dedup_franchises:$('f_dedup').checked, require_phone:$('f_phone').checked,
+        dedup_across_niches:$('f_dedup_niches').checked, dedup_franchises:$('f_dedup').checked, require_phone:$('f_phone').checked,
         require_whatsapp:$('f_wa').checked, require_social:$('f_social').checked,
         require_email:$('f_email').checked, require_website:$('f_site').checked,
         min_rating:parseFloat($('f_rating').value||'0'), min_reviews:parseInt($('f_reviews').value||'0',10)
