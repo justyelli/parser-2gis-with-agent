@@ -80,6 +80,7 @@ def _build_config(data: dict[str, Any]) -> Configuration:
 
     f = data.get('filters', {}) or {}
     config.filters.dedup_franchises = bool(f.get('dedup_franchises'))
+    config.filters.dedup_across_niches = bool(f.get('dedup_across_niches', True))
     config.filters.require_phone = bool(f.get('require_phone'))
     config.filters.require_whatsapp = bool(f.get('require_whatsapp'))
     config.filters.require_social = bool(f.get('require_social'))
