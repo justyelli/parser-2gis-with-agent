@@ -43,6 +43,9 @@ class FilterOptions(BaseModel):
         require_social: Keep only records with at least one social network / messenger.
         require_email: Keep only records that have an e-mail.
         require_website: Keep only records that have a website.
+        require_no_website: Keep only records that do NOT have a website
+            (target audience for the outreach platform). Mutually exclusive
+            with `require_website`.
         min_rating: Keep only records with rating >= this value (0 disables).
         min_reviews: Keep only records with review count >= this value (0 disables).
     """
@@ -55,6 +58,7 @@ class FilterOptions(BaseModel):
     require_social: bool = False
     require_email: bool = False
     require_website: bool = False
+    require_no_website: bool = False
     min_rating: float = Field(0.0, ge=0, le=5)
     min_reviews: int = Field(0, ge=0)
 

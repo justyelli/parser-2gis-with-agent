@@ -77,6 +77,7 @@ def any_filter_enabled(options: FilterOptions) -> bool:
         options.dedup_franchises, options.dedup_across_niches,
         options.require_phone, options.require_whatsapp,
         options.require_social, options.require_email, options.require_website,
+        options.require_no_website,
         options.min_rating > 0, options.min_reviews > 0,
     ])
 
@@ -108,6 +109,8 @@ class FilterWriter(FileWriter):
         if o.require_email and not f.has_email:
             return False
         if o.require_website and not f.has_website:
+            return False
+        if o.require_no_website and f.has_website:
             return False
         if o.min_rating and f.rating < o.min_rating:
             return False

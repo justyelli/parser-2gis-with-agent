@@ -212,6 +212,42 @@
     /* Render the cities panel inline on touch instead of an absolute overlay. */
     .msel-panel{position:static;box-shadow:none;margin-top:6px}
   }
+  /* --- Guided wizard (outreach platform main screen) --- */
+  .wz{margin-bottom:14px}
+  .wz-head{margin-bottom:8px}
+  .wz-title{font-size:19px;font-weight:800;color:var(--text)}
+  .wz-sub{font-size:12.5px;color:var(--muted);margin-top:2px}
+  .wz-bar{display:flex;gap:5px;margin:12px 0 14px}
+  .wz-bar span{height:5px;flex:1;border-radius:3px;background:var(--line);transition:background .3s}
+  .wz-bar span.on{background:var(--ok)}
+  .wz-bar span.cur{background:var(--primary)}
+  .wz-step{display:flex;gap:12px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);margin-bottom:9px}
+  .wz-step.done{background:#f0fdf4;border-color:#bbf7d0}
+  .wz-step.cur{border-color:var(--primary);box-shadow:0 0 0 3px rgba(99,102,241,.12)}
+  .wz-step.lock{opacity:.55}
+  .wz-num{flex:0 0 30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;background:var(--bg);color:var(--muted);border:1px solid var(--line)}
+  .wz-step.done .wz-num{background:var(--ok);color:#fff;border-color:var(--ok)}
+  .wz-step.cur .wz-num{background:var(--primary);color:#fff;border-color:var(--primary)}
+  .wz-body{flex:1;min-width:0}
+  .wz-h{font-weight:700;font-size:14.5px;color:var(--text);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .wz-d{font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.45}
+  .wz-pill{font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;white-space:nowrap}
+  .wz-pill.m{background:var(--bg);color:var(--muted)}
+  .wz-pill.g{background:#dcfce7;color:#15803d}
+  .wz-pill.a{background:#eef2ff;color:var(--primary-dark)}
+  .wz-inline{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}
+  .wz-in{flex:1;min-width:150px}
+  .wz-act{margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .wz-btn{font-size:13px;font-weight:700;padding:8px 15px;border-radius:9px;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--text)}
+  .wz-btn.primary{background:var(--primary);color:var(--on-primary);border-color:var(--primary)}
+  .wz-btn.primary:hover{background:var(--primary-dark)}
+  .wz-btn.ghost{background:transparent;border-color:transparent;color:var(--muted)}
+  .wz-btn:disabled{cursor:not-allowed;opacity:.5}
+  .wz-foot{margin-top:6px;text-align:center}
+  .wz-adv{font-size:12.5px;color:var(--muted);background:transparent;border:1px dashed var(--line);border-radius:9px;padding:8px 14px;cursor:pointer;width:100%}
+  .wz-adv:hover{color:var(--primary);border-color:var(--primary)}
+  .wz-back{font-size:13px;font-weight:700;color:var(--primary);background:transparent;border:none;cursor:pointer;padding:6px 0;margin-bottom:6px}
+  .wz-mini{font-size:11.5px;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -223,6 +259,115 @@
         <button data-lang="ru" title="Русский"><svg width="24" height="16" viewBox="0 0 24 16"><rect width="24" height="16" rx="2" fill="#fff" stroke="#e6e8ef" stroke-width=".7"/><rect x=".5" y="5.5" width="23" height="5.3" fill="#0039A6"/><rect x=".5" y="10.8" width="23" height="4.7" rx="2" fill="#D52B1E"/></svg></button>
       </div>
     </div>
+
+    <!-- ===== Guided wizard: main screen for the outreach platform ===== -->
+    <div class="wz" id="wizard">
+      <div class="wz-head">
+        <div class="wz-title" data-i18n="wz_title">🚀 Тарату платформасы</div>
+        <div class="wz-sub" data-i18n="wz_sub">Қадам қадаммен: нишадан клиентке дейін.</div>
+      </div>
+      <div class="wz-bar" id="wzBar"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+
+      <div class="wz-step cur" id="wzS1">
+        <div class="wz-num">1</div>
+        <div class="wz-body">
+          <div class="wz-h"><span data-i18n="wz_s1">Ниша мен қаланы таңдаңыз</span><span class="wz-pill a" id="wzS1Pill">Толтырыңыз</span></div>
+          <div class="wz-d" data-i18n="wz_s1d">Қай ниша бойынша бизнес іздейміз және сайт жасаймыз.</div>
+          <div class="wz-inline">
+            <input id="wzNiche" class="wz-in" data-i18n-ph="wz_niche_ph" placeholder="Ниша: Стоматология, Кафе…" list="wzNicheList" autocomplete="off">
+            <datalist id="wzNicheList"></datalist>
+            <input id="wzCity" class="wz-in" data-i18n-ph="wz_city_ph" placeholder="Қала: Алматы…" list="wzCityList" autocomplete="off">
+            <datalist id="wzCityList"></datalist>
+          </div>
+          <input type="hidden" id="wzCityName"><input type="hidden" id="wzCityDomain"><input type="hidden" id="wzCityCode">
+        </div>
+      </div>
+
+      <div class="wz-step lock" id="wzS2">
+        <div class="wz-num">2</div>
+        <div class="wz-body">
+          <div class="wz-h"><span data-i18n="wz_s2">Сайтсыз бизнестерді табу</span><span class="wz-pill m" id="wzS2Pill">🔒</span></div>
+          <div class="wz-d" data-i18n="wz_s2d">2ГИС-тен телефоны бар, бірақ сайты жоқ бизнестерді жинаймыз.</div>
+          <div class="wz-act">
+            <button class="wz-btn primary" id="wzFind" disabled data-i18n="wz_find">🔎 Табу</button>
+            <button class="wz-btn ghost" id="wzStop" style="display:none" data-i18n="wz_stop">Тоқтату</button>
+            <button class="wz-btn ghost" id="wzSeeLeads" style="display:none" data-i18n="wz_see">Тізімді көру →</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="wz-step lock" id="wzS3">
+        <div class="wz-num">3</div>
+        <div class="wz-body">
+          <div class="wz-h"><span data-i18n="wz_s3">Ниша үшін сайт жасау</span><span class="wz-pill m" id="wzS3Pill">🔒</span></div>
+          <div class="wz-d" data-i18n="wz_s3d">ИИ осы ниша үшін әдемі үлгі-сайт жазады. Бір сайт — бүкіл нишаға.</div>
+          <div class="wz-act">
+            <button class="wz-btn primary" id="wzSiteBtn" disabled data-i18n="wz_s3btn">✨ Сайт жасау</button>
+            <a class="wz-btn ghost" id="wzSiteView" style="display:none" target="_blank" rel="noopener" data-i18n="wz_s3view">Қарау →</a>
+          </div>
+          <div class="wz-mini" id="wzSiteInfo" style="margin-top:6px"></div>
+        </div>
+      </div>
+
+      <div class="wz-step lock" id="wzS4">
+        <div class="wz-num">4</div>
+        <div class="wz-body">
+          <div class="wz-h"><span data-i18n="wz_s4">Жариялау → сілтеме алу</span><span class="wz-pill m" id="wzS4Pill">🔒</span></div>
+          <div class="wz-d" data-i18n="wz_s4d">Сайтты поддоменге жүктейміз және дайын сілтеме береміз.</div>
+          <div class="wz-act">
+            <button class="wz-btn primary" id="wzPubBtn" disabled data-i18n="wz_s4btn">Жариялау</button>
+            <a class="wz-btn ghost" id="wzPubView" style="display:none" target="_blank" rel="noopener" data-i18n="wz_s3view">Қарау →</a>
+          </div>
+          <div class="wz-mini" id="wzPubInfo" style="margin-top:6px"></div>
+        </div>
+      </div>
+
+      <div class="wz-step" id="wzS5">
+        <div class="wz-num">5</div>
+        <div class="wz-body">
+          <div class="wz-h"><span data-i18n="wz_s5">WhatsApp қосу</span><span class="wz-pill m" id="wzS5Pill">…</span></div>
+          <div class="wz-d" data-i18n="wz_s5d">QR-кодты бір рет сканерлеңіз — нөмір таратуға дайын. Кез келген уақытта қосуға болады.</div>
+          <div class="wz-act">
+            <button class="wz-btn primary" id="wzWaBtn" data-i18n="wz_s5btn">WhatsApp қосу</button>
+            <span class="wz-mini" id="wzWaInfo"></span>
+          </div>
+          <div id="wzWaPanel" style="display:none;margin-top:10px;text-align:center">
+            <img id="wzWaImg" alt="QR" style="width:220px;height:220px;background:#fff;border:1px solid var(--line);border-radius:12px">
+            <div class="wz-d" data-i18n="wz_wa_scan" style="text-align:center">WhatsApp → Байланысқан құрылғылар → QR-ды сканерлеңіз</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="wz-step lock" id="wzS6">
+        <div class="wz-num">6</div>
+        <div class="wz-body">
+          <div class="wz-h"><span data-i18n="wz_s6">Сілтемені тарату</span><span class="wz-pill m" id="wzS6Pill">🔒</span></div>
+          <div class="wz-d" data-i18n="wz_s6d">Сілтемені бизнестерге кідіріспен жібереміз (қауіпсіз).</div>
+          <div id="wzCampFields" style="display:none">
+            <textarea id="wzMsg" class="wz-in" style="min-height:66px;margin-top:8px"></textarea>
+            <input id="wzLink" class="wz-in" data-i18n-ph="wz_link_ph" placeholder="Сайт сілтемесі (қолмен қоюға болады)" style="margin-top:8px" autocomplete="off">
+            <label class="wz-mini" style="display:flex;gap:6px;align-items:center;margin-top:8px;cursor:pointer"><input type="checkbox" id="wzDry" checked style="width:auto"> <span data-i18n="wz_dry">Сынақ прогон (нақты жіберусіз)</span></label>
+          </div>
+          <div class="wz-act">
+            <button class="wz-btn primary" id="wzSendBtn" disabled data-i18n="wz_s6btn">Таратуды бастау →</button>
+            <button class="wz-btn ghost" id="wzSendStop" style="display:none" data-i18n="wz_stop">Тоқтату</button>
+            <span class="wz-mini" id="wzSendInfo"></span>
+          </div>
+          <div id="wzSendProg" style="display:none;margin-top:10px">
+            <div style="height:6px;background:var(--line);border-radius:3px;overflow:hidden"><div id="wzSendBar" style="height:100%;width:0;background:var(--ok);transition:width .3s"></div></div>
+            <div class="wz-mini" id="wzSendStat" style="margin-top:6px"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="wz-foot">
+        <button class="wz-adv" id="wzAdvToggle" data-i18n="wz_adv">⚙️ Кеңейтілген режим</button>
+      </div>
+    </div>
+
+    <!-- ===== Advanced mode: original controls (hidden by default) ===== -->
+    <div id="advWrap" style="display:none">
+    <button class="wz-back" id="wzBack" data-i18n="wz_back">← Мастерге оралу</button>
 
     <div class="group">
       <label class="h" for="urls" data-i18n="urls_label">Сілтемелер</label>
@@ -287,6 +432,7 @@
         <label class="check"><input type="checkbox" id="f_social"> <span data-i18n="f_social">Тек әлеуметтік желілермен</span></label>
         <label class="check"><input type="checkbox" id="f_email"> <span data-i18n="f_email">Тек e-mail барлар</span></label>
         <label class="check"><input type="checkbox" id="f_site"> <span data-i18n="f_site">Тек сайты барлар</span></label>
+        <label class="check"><input type="checkbox" id="f_nosite"> <span data-i18n="f_nosite">Тек сайтсыз (тарату үшін)</span></label>
         <div class="rowmini">
           <label class="field"><span data-i18n="rating_from">Рейтинг (бастап)</span><input type="number" id="f_rating" min="0" max="5" step="0.1" value="0"></label>
           <label class="field"><span data-i18n="reviews_from">Пікірлер (бастап)</span><input type="number" id="f_reviews" min="0" step="1" value="0"></label>
@@ -337,6 +483,7 @@
       <button class="btn-run" id="run" data-i18n="run">Бастау</button>
       <button class="btn-stop" id="stop" style="display:none" data-i18n="stop">Тоқтату</button>
     </div>
+    </div><!-- /advWrap -->
   </aside>
 
   <main>
@@ -395,7 +542,22 @@
       wa_add:'+ Үлгі қосу', wa_hint:'Карточкадағы «WhatsApp» басқанда чат кездейсоқ үлгімен ашылады. Бірнеше үлгі → әр мекемеге өз нұсқасы.',
       filters_title:'🧹 Сүзгілер', f_dedup_niches:'Ниша аралық қайталанусыз (1 мекеме — 1 рет)', f_dedup:'Франшизасыз (ұйымға 1)', f_phone:'Тек телефоны барлар',
       f_wa:'Тек WhatsApp барлар', f_social:'Тек әлеуметтік желілермен', f_email:'Тек e-mail барлар',
-      f_site:'Тек сайты барлар', rating_from:'Рейтинг (бастап)', reviews_from:'Пікірлер (бастап)',
+      f_site:'Тек сайты барлар', f_nosite:'Тек сайтсыз (тарату үшін)', rating_from:'Рейтинг (бастап)', reviews_from:'Пікірлер (бастап)',
+      wz_title:'🚀 Тарату платформасы', wz_sub:'Қадам қадаммен: нишадан клиентке дейін.',
+      wz_s1:'Ниша мен қаланы таңдаңыз', wz_s1d:'Қай ниша бойынша бизнес іздейміз және сайт жасаймыз.',
+      wz_niche_ph:'Ниша: Стоматология, Кафе…', wz_city_ph:'Қала: Алматы…',
+      wz_s2:'Сайтсыз бизнестерді табу', wz_s2d:'2ГИС-тен телефоны бар, бірақ сайты жоқ бизнестерді жинаймыз.',
+      wz_s3:'Ниша үшін сайт жасау', wz_s3d:'ИИ осы ниша үшін әдемі үлгі-сайт жазады. Бір сайт — бүкіл нишаға.', wz_s3btn:'✨ Сайт жасау',
+      wz_s3view:'Қарау →', wz_s3again:'✨ Қайта жасау', wz_site_building:'Жасалуда…', wz_site_local:'Дайын (алдын ала қарау)',
+      wz_s4:'Жариялау → сілтеме алу', wz_s4d:'Сайтты поддоменге жүктейміз және дайын сілтеме береміз.', wz_s4btn:'Жариялау',
+      wz_s4again:'Қайта жариялау', wz_pub_ing:'Жариялануда…', wz_pub_nodomain:'Жарияланды (домен бапталмаған)',
+      wz_s5:'WhatsApp қосу', wz_s5d:'QR-кодты бір рет сканерлеңіз — нөмір таратуға дайын. Кез келген уақытта қосуға болады.', wz_s5btn:'WhatsApp қосу',
+      wz_connected:'Қосылған', wz_wa_need:'Қосу керек', wz_wa_off:'Шлюз офлайн', wz_wa_disconnect:'Ажырату', wz_wa_confirm:'WhatsApp ажыратылсын ба?', wz_wa_scan:'WhatsApp → Байланысқан құрылғылар → QR сканерлеңіз',
+      wz_dry:'Сынақ прогон (нақты жіберусіз)', wz_link_ph:'Сайт сілтемесі (қолмен қоюға болады)', wz_leads:'лид', wz_need_wa:'Алдымен WhatsApp қосыңыз (5-қадам)', wz_camp_running:'Жіберілуде', wz_sent:'жіберілді', wz_failed:'қате', wz_send_again:'Қайта жіберу',
+      wz_s6:'Сілтемені тарату', wz_s6d:'Сілтемені бизнестерге кідіріспен жібереміз (қауіпсіз).', wz_s6btn:'Таратуды бастау →',
+      wz_find:'🔎 Табу', wz_again:'🔄 Қайта табу', wz_stop:'Тоқтату', wz_see:'Тізімді көру →',
+      wz_adv:'⚙️ Кеңейтілген режим', wz_back:'← Мастерге оралу',
+      wz_fill:'Толтырыңыз', wz_ready:'Дайын', wz_pill_cur:'Сіздің қадам', wz_searching:'Ізделуде…', wz_found:'Табылды', wz_soon:'жақында',
       params_title:'📋 Параметрлер', maxrec:'Бір URL-ден макс. жазба', clean:'Таза көрініс (қоқыссыз)',
       headless:'Жасырын браузер (headless)', adv_title:'⚙️ Қосымша баптаулар', a_images:'Суреттерді өшіру (жылдамырақ)',
       a_max:'Браузерді жайып ашу', a_skip404:'Дәл сәйкестіктер («табылмады» өткізу)', a_rubrics:'«Айдарлар» бағаны',
@@ -427,7 +589,22 @@
       wa_web:'WhatsApp Web (в браузере)', wa_app:'Приложение / телефон (wa.me)', wa_templates:'Шаблоны сообщений',
       wa_add:'+ Добавить шаблон', wa_hint:'При клике на «WhatsApp» в карточке откроется чат с подставленным случайным шаблоном. Несколько шаблонов → каждому заведению свой вариант.',
       filters_title:'🧹 Фильтры', f_dedup_niches:'Без повторов между нишами (1 заведение — 1 раз)', f_dedup:'Без франшиз (1 на организацию)', f_phone:'Только с телефоном',
-      f_wa:'Только с WhatsApp', f_social:'Только с соцсетями', f_email:'Только с e-mail', f_site:'Только с сайтом',
+      f_wa:'Только с WhatsApp', f_social:'Только с соцсетями', f_email:'Только с e-mail', f_site:'Только с сайтом', f_nosite:'Только без сайта (для рассылки)',
+      wz_title:'🚀 Платформа рассылки', wz_sub:'Пошагово: от ниши до клиента.',
+      wz_s1:'Выберите нишу и город', wz_s1d:'По какой нише ищем бизнесы и делаем сайт.',
+      wz_niche_ph:'Ниша: Стоматология, Кафе…', wz_city_ph:'Город: Алматы…',
+      wz_s2:'Найдите бизнесы без сайта', wz_s2d:'Парсим 2ГИС и оставляем тех, у кого есть телефон, но нет сайта.',
+      wz_s3:'Создайте сайт для ниши', wz_s3d:'ИИ напишет красивый шаблонный сайт под нишу. Один сайт — на всю нишу.', wz_s3btn:'✨ Создать сайт',
+      wz_s3view:'Открыть →', wz_s3again:'✨ Создать заново', wz_site_building:'Генерируется…', wz_site_local:'Готово (предпросмотр)',
+      wz_s4:'Опубликуйте → получите ссылку', wz_s4d:'Зальём сайт на поддомен и дадим готовую ссылку.', wz_s4btn:'Опубликовать',
+      wz_s4again:'Опубликовать заново', wz_pub_ing:'Публикуется…', wz_pub_nodomain:'Опубликовано (домен не настроен)',
+      wz_s5:'Подключите WhatsApp', wz_s5d:'Отсканируйте QR-код один раз — номер готов к рассылке. Подключить можно в любой момент.', wz_s5btn:'Подключить WhatsApp',
+      wz_connected:'Подключено', wz_wa_need:'Не подключён', wz_wa_off:'Шлюз офлайн', wz_wa_disconnect:'Отключить', wz_wa_confirm:'Отключить WhatsApp?', wz_wa_scan:'WhatsApp → Связанные устройства → наведи на QR',
+      wz_dry:'Тестовый прогон (без реальной отправки)', wz_link_ph:'Ссылка на сайт (можно вставить вручную)', wz_leads:'лид.', wz_need_wa:'Сначала подключите WhatsApp (шаг 5)', wz_camp_running:'Идёт отправка', wz_sent:'отправлено', wz_failed:'ошибок', wz_send_again:'Отправить снова',
+      wz_s6:'Разошлите ссылку', wz_s6d:'Отправим ссылку бизнесам с задержками (безопасно).', wz_s6btn:'Начать рассылку →',
+      wz_find:'🔎 Найти', wz_again:'🔄 Найти заново', wz_stop:'Стоп', wz_see:'Смотреть список →',
+      wz_adv:'⚙️ Расширенный режим', wz_back:'← Вернуться к мастеру',
+      wz_fill:'Заполните', wz_ready:'Готово', wz_pill_cur:'Ваш шаг', wz_searching:'Идёт поиск…', wz_found:'Найдено', wz_soon:'скоро',
       rating_from:'Рейтинг от', reviews_from:'Отзывов от', params_title:'📋 Параметры',
       maxrec:'Макс. записей с одного URL', clean:'Чистый вид (без мусора)', headless:'Скрытый браузер (headless)',
       adv_title:'⚙️ Расширенные настройки', a_images:'Отключить изображения (быстрее)', a_max:'Запускать браузер развёрнутым',
@@ -467,6 +644,10 @@
     if(typeof updateCitiesLabel==='function')updateCitiesLabel();
     if(GEN&&GEN.loaded){renderGenCities();renderGenRubrics();renderGenQueryList();
       $('genRubBtn').textContent=GEN.rubCode?GEN.rubLabel:t('no_rubric');}
+    if(typeof wzFillData==='function')wzFillData();
+    if(typeof wzRefresh==='function')wzRefresh();
+    if(typeof wzMsgSync==='function')wzMsgSync();
+    if(typeof wzCampRefresh==='function')wzCampRefresh();
     setStatus(lastStatus); loadHistory(); renderGrid();
     try{localStorage.setItem('lang',LANG);}catch(_){}
   }
@@ -477,6 +658,12 @@
   function digits(s){return (s||'').replace(/\D/g,'');}
 
   function payload(){
+    // Outreach niche/city: niche = chosen rubric label or the search query;
+    // city = the first selected city (records also carry their own city).
+    var _niche=(GEN.rubLabel||$('genQuery').value||'').trim();
+    var _cityEl=$('genCities').querySelector('input:checked');
+    var _wzCity=$('wzCityName')?($('wzCityName').value||'').trim():'';
+    var _city=_wzCity||(_cityEl?_cityEl.parentNode.textContent.trim():'');
     return {
       urls: $('urls').value.split('\n'),
       max_records: parseInt($('maxrec').value||'50',10),
@@ -486,8 +673,10 @@
         dedup_across_niches:$('f_dedup_niches').checked, dedup_franchises:$('f_dedup').checked, require_phone:$('f_phone').checked,
         require_whatsapp:$('f_wa').checked, require_social:$('f_social').checked,
         require_email:$('f_email').checked, require_website:$('f_site').checked,
+        require_no_website:$('f_nosite').checked,
         min_rating:parseFloat($('f_rating').value||'0'), min_reviews:parseInt($('f_reviews').value||'0',10)
       },
+      outreach: { enabled:$('f_nosite').checked, niche:_niche, city:_city },
       advanced: {
         disable_images:$('a_images').checked, start_maximized:$('a_max').checked,
         skip_404_response:$('a_skip404').checked, add_rubrics:$('a_rubrics').checked,
@@ -598,6 +787,7 @@
       if(d.logs && d.logs.length){var lb=$('logbox'); lb.textContent+=(lb.textContent?'\n':'')+d.logs.join('\n'); lb.scrollTop=lb.scrollHeight;}
       $('count').textContent=d.count?(d.count+' '+(d.running?t('collected'):t('found'))):'';
       setStatus(d.status);
+      if(typeof wzOnTick==='function')wzOnTick(d);
       if(!d.running){
         clearInterval(poll); poll=null;
         $('run').style.display=''; $('stop').style.display='none';
@@ -810,6 +1000,7 @@
       $('genCountry').innerHTML=d.countries.map(function(c){
         return '<option value="'+esc(c.code)+'"'+(c.code==='kz'?' selected':'')+'>'+esc(c.name)+'</option>';}).join('');
       renderGenCities(); renderGenRubrics(); renderGenQueryList();
+      if(typeof wzFillData==='function')wzFillData();
     }).catch(function(){});
   }
   $('gen').addEventListener('toggle',function(){if($('gen').open)loadGenerator();});
@@ -862,6 +1053,299 @@
     $('urls').value=existing.join('\n');
     var btn=$('genAdd'); btn.textContent=t('added')+added;
     setTimeout(function(){btn.textContent=t('add_links');},1300);
+  });
+
+  // ---- Guided wizard controller (outreach platform) ----
+  var wzFound=null, wzRunning=false;   // found leads count / active parse
+
+  function wzFillData(){
+    if(!GEN||!GEN.loaded)return;
+    $('wzCityList').innerHTML=GEN.cities.map(function(c){return '<option value="'+esc(c.name)+'">';}).join('');
+    $('wzNicheList').innerHTML=curRubrics().map(function(r){return '<option value="'+esc(r.label)+'">';}).join('');
+  }
+
+  function wzResolveCity(){
+    // Match the typed city name to a known 2GIS city (domain + code).
+    var name=($('wzCity').value||'').trim().toLowerCase();
+    $('wzCityName').value=''; $('wzCityDomain').value=''; $('wzCityCode').value='';
+    if(!name||!GEN.loaded)return false;
+    var hit=null, i;
+    for(i=0;i<GEN.cities.length;i++){if(GEN.cities[i].name.toLowerCase()===name){hit=GEN.cities[i];break;}}
+    if(!hit){for(i=0;i<GEN.cities.length;i++){if(GEN.cities[i].name.toLowerCase().indexOf(name)===0){hit=GEN.cities[i];break;}}}
+    if(!hit)return false;
+    $('wzCityName').value=hit.name; $('wzCityDomain').value=hit.domain; $('wzCityCode').value=hit.code;
+    return true;
+  }
+
+  function wzSet(n,state){
+    var el=$('wzS'+n); if(!el)return;
+    el.classList.remove('done','cur','lock'); if(state)el.classList.add(state);
+  }
+  function wzBar(){
+    var b=$('wzBar').children;
+    for(var n=1;n<=6;n++){var s=$('wzS'+n), sp=b[n-1]; sp.className='';
+      if(s.classList.contains('done'))sp.className='on';
+      else if(s.classList.contains('cur'))sp.className='cur';}
+  }
+
+  function wzRefresh(){
+    var nicheOk=(($('wzNiche').value||'').trim().length>0);
+    var cityOk=wzResolveCity();
+    var s1ok=nicheOk&&cityOk;
+    // Step 1
+    wzSet(1,s1ok?'done':'cur');
+    $('wzS1Pill').className='wz-pill '+(s1ok?'g':'a');
+    $('wzS1Pill').textContent=s1ok?t('wz_ready'):t('wz_fill');
+    // Step 2
+    if(wzRunning){
+      wzSet(2,'cur'); $('wzS2Pill').className='wz-pill a'; $('wzS2Pill').textContent=t('wz_searching');
+      $('wzFind').style.display='none'; $('wzStop').style.display=''; $('wzSeeLeads').style.display='none';
+    }else if(wzFound!=null){
+      wzSet(2,'done'); $('wzS2Pill').className='wz-pill g'; $('wzS2Pill').textContent=t('wz_found')+' '+wzFound;
+      $('wzFind').style.display=''; $('wzFind').disabled=false; $('wzFind').textContent=t('wz_again');
+      $('wzStop').style.display='none'; $('wzSeeLeads').style.display='';
+    }else{
+      wzSet(2,s1ok?'cur':'lock');
+      $('wzS2Pill').className='wz-pill '+(s1ok?'a':'m');
+      $('wzS2Pill').textContent=s1ok?t('wz_pill_cur'):'🔒';
+      $('wzFind').style.display=''; $('wzFind').disabled=!s1ok; $('wzFind').textContent=t('wz_find');
+      $('wzStop').style.display='none'; $('wzSeeLeads').style.display='none';
+    }
+    if(typeof wzSiteRender==='function')wzSiteRender();  // step 3 (AI site)
+    wzBar();
+  }
+
+  function wzOnTick(d){
+    if(!d)return;
+    if(wzRunning && d.running){
+      $('wzS2Pill').textContent=t('wz_searching')+' '+(d.count||0);
+    }
+    if(wzRunning && !d.running){
+      wzRunning=false; wzFound=d.count||0; wzRefresh();
+      if(typeof wzCampRefresh==='function')wzCampRefresh();  // leads just captured
+    }
+  }
+
+  $('wzNiche').addEventListener('input',wzRefresh);
+  $('wzCity').addEventListener('input',wzRefresh);
+
+  $('wzFind').addEventListener('click',function(){
+    if($('wzFind').disabled)return;
+    var niche=($('wzNiche').value||'').trim();
+    if(!niche||!wzResolveCity()){wzRefresh();return;}
+    // Build the 2GIS search URL and drive the existing parse pipeline.
+    var url='https://2gis.'+$('wzCityDomain').value+'/'+$('wzCityCode').value+
+            '/search/'+encodeURIComponent(niche)+'/filters/sort=name';
+    $('genQuery').value=niche;            // feeds outreach niche in payload()
+    GEN.rubCode=''; GEN.rubLabel='';      // so niche = the query, not a rubric
+    $('urls').value=url;
+    $('f_nosite').checked=true;           // target: businesses WITHOUT a website
+    $('f_phone').checked=true;            // must have a phone to message them
+    wzFound=null; wzRunning=true; wzRefresh();
+    $('run').click();                     // reuse start + polling + results
+  });
+  $('wzStop').addEventListener('click',function(){$('stop').click();});
+  $('wzSeeLeads').addEventListener('click',function(){
+    var g=$('grid'); (g&&g.children.length?g:$('empty')).scrollIntoView({behavior:'smooth',block:'start'});
+  });
+
+  $('wzAdvToggle').addEventListener('click',function(){
+    $('advWrap').style.display=''; $('wizard').style.display='none';
+  });
+  $('wzBack').addEventListener('click',function(){
+    $('advWrap').style.display='none'; $('wizard').style.display='';
+  });
+
+  // ---- WhatsApp connection (step 5) — available at any time ----
+  var wzWaConnected=false, wzWaShowQr=false;
+  function wzWaLoadQr(){
+    fetch('/api/wa/qr').then(function(r){return r.json()}).then(function(q){
+      if(q&&q.qr)$('wzWaImg').src=q.qr;
+    }).catch(function(){});
+  }
+  function wzWaRender(s){
+    var pill=$('wzS5Pill'), btn=$('wzWaBtn'), info=$('wzWaInfo'), panel=$('wzWaPanel'), step=$('wzS5');
+    if(s&&s.connected){
+      wzWaConnected=true;
+      step.classList.remove('lock'); step.classList.add('done');
+      pill.className='wz-pill g'; pill.textContent=t('wz_connected');
+      var num=(s.user&&s.user.id)?s.user.id.split(':')[0].split('@')[0]:'';
+      info.textContent=num?('· '+num):'';
+      btn.textContent=t('wz_wa_disconnect'); btn.className='wz-btn ghost';
+      panel.style.display='none'; wzWaShowQr=false;
+    }else{
+      wzWaConnected=false;
+      step.classList.remove('done');
+      pill.className='wz-pill '+((s&&s.error)?'m':'a');
+      pill.textContent=(s&&s.error)?t('wz_wa_off'):t('wz_wa_need');
+      info.textContent='';
+      btn.textContent=t('wz_s5btn'); btn.className='wz-btn primary';
+      panel.style.display=wzWaShowQr?'':'none';
+      if(wzWaShowQr)wzWaLoadQr();
+    }
+    if(typeof wzBar==='function')wzBar();
+  }
+  function wzWaStatus(){
+    fetch('/api/wa/status').then(function(r){return r.json()}).then(wzWaRender).catch(function(){wzWaRender({error:true});});
+  }
+  $('wzWaBtn').addEventListener('click',function(){
+    if(wzWaConnected){
+      if(!confirm(t('wz_wa_confirm')))return;
+      fetch('/api/wa/logout',{method:'POST'}).then(function(){wzWaShowQr=false;wzWaStatus();}).catch(function(){});
+    }else{
+      wzWaShowQr=true; $('wzWaPanel').style.display=''; wzWaLoadQr(); wzWaStatus();
+    }
+  });
+  setInterval(wzWaStatus, 3000); wzWaStatus();
+
+  // ---- Campaign / broadcast (step 6) ----
+  var WZ_MSG={kk:'Сәлеметсіз бе! Бизнесіңізге арналған дайын сайт: {link}',
+              ru:'Здравствуйте! Готовый сайт для вашего бизнеса: {link}'};
+  var wzCampPoll=null, wzCampLeads=0;
+  function wzMsgSync(){
+    var el=$('wzMsg'); if(!el)return;
+    var v=(el.value||'').trim();
+    if(v===''||v===WZ_MSG.kk||v===WZ_MSG.ru){ el.value=WZ_MSG[LANG]||WZ_MSG.ru; }
+  }
+  function wzCampNiche(){ return ($('wzNiche').value||'').trim(); }
+  function wzCampCity(){ return ($('wzCityName')&&$('wzCityName').value)||''; }
+  function wzCampRefresh(){
+    var niche=wzCampNiche(), pill=$('wzS6Pill'), step=$('wzS6'), btn=$('wzSendBtn'), fields=$('wzCampFields');
+    if(!niche){ step.classList.add('lock'); pill.className='wz-pill m'; pill.textContent='🔒'; btn.disabled=true; fields.style.display='none'; return; }
+    var city=wzCampCity();
+    fetch('/api/campaign/leads?niche='+encodeURIComponent(niche)+(city?('&city='+encodeURIComponent(city)):''))
+      .then(function(r){return r.json()}).then(function(d){
+        wzCampLeads=d.count||0;
+        if(wzCampLeads>0){
+          step.classList.remove('lock'); fields.style.display='';
+          pill.className='wz-pill a'; pill.textContent=wzCampLeads+' '+t('wz_leads');
+          btn.disabled=false; wzMsgSync();
+        }else{
+          step.classList.add('lock'); fields.style.display='none';
+          pill.className='wz-pill m'; pill.textContent='🔒'; btn.disabled=true;
+        }
+        if(typeof wzBar==='function')wzBar();
+      }).catch(function(){});
+  }
+  function wzCampRender(s){
+    var prog=$('wzSendProg'), bar=$('wzSendBar'), stat=$('wzSendStat'),
+        btn=$('wzSendBtn'), stop=$('wzSendStop'), step=$('wzS6'), pill=$('wzS6Pill');
+    var st=s.stats||{total:0,sent:0,failed:0};
+    var done=(st.sent||0)+(st.failed||0);
+    if(s.running){
+      prog.style.display=''; btn.style.display='none'; stop.style.display='';
+      bar.style.width=(st.total?Math.round(done/st.total*100):0)+'%';
+      stat.textContent=t('wz_camp_running')+': '+done+'/'+st.total+' · '+t('wz_sent')+' '+(st.sent||0)+
+        (st.failed?(' · '+t('wz_failed')+' '+st.failed):'')+(s.current?(' · '+s.current):'');
+      pill.className='wz-pill a'; pill.textContent=t('wz_camp_running');
+      step.classList.remove('lock');
+    }else{
+      btn.style.display=''; stop.style.display='none';
+      if(s.status==='done'||s.status==='stopped'||s.status==='paused'){
+        prog.style.display='';
+        bar.style.width=(st.total?Math.round(done/st.total*100):0)+'%';
+        stat.textContent=t('wz_sent')+' '+(st.sent||0)+'/'+st.total+
+          (st.failed?(' · '+t('wz_failed')+' '+st.failed):'')+(s.dry_run?' · (test)':'');
+        pill.className='wz-pill g'; pill.textContent=t('wz_sent')+' '+(st.sent||0);
+        step.classList.add('done'); step.classList.remove('lock');
+        btn.textContent=t('wz_send_again');
+      }
+    }
+    if(typeof wzBar==='function')wzBar();
+  }
+  function wzCampStatus(){
+    fetch('/api/campaign/status').then(function(r){return r.json()}).then(function(s){
+      wzCampRender(s);
+      if(!s.running && wzCampPoll){ clearInterval(wzCampPoll); wzCampPoll=null; }
+    }).catch(function(){});
+  }
+  $('wzSendBtn').addEventListener('click',function(){
+    if($('wzSendBtn').disabled)return;
+    if(!wzCampNiche())return;
+    var dry=$('wzDry').checked;
+    if(!dry && !wzWaConnected){ alert(t('wz_need_wa')); return; }
+    var body={ niche:wzCampNiche(), city:wzCampCity(), message:$('wzMsg').value,
+               link:$('wzLink').value.trim(), dry_run:dry };
+    fetch('/api/campaign/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+      .then(function(r){return r.json()}).then(function(d){
+        if(!d.ok){alert(d.error||t('a_start_err'));return;}
+        $('wzSendProg').style.display='';
+        if(wzCampPoll)clearInterval(wzCampPoll); wzCampPoll=setInterval(wzCampStatus,800); wzCampStatus();
+      }).catch(function(e){alert(t('a_server')+e)});
+  });
+  $('wzSendStop').addEventListener('click',function(){ fetch('/api/campaign/stop',{method:'POST'}).catch(function(){}); });
+  $('wzNiche').addEventListener('input',wzCampRefresh);
+  wzCampStatus();
+
+  // ---- AI site generation (step 3) ----
+  var wzSiteBuilt=false, wzSiteUrl=null, wzSitePreview=null;
+  function wzSiteRender(){
+    var ok=(($('wzNiche').value||'').trim()!=='') && wzResolveCity();
+    var step=$('wzS3'), pill=$('wzS3Pill'), btn=$('wzSiteBtn'), view=$('wzSiteView');
+    if(wzSiteBuilt){
+      step.classList.remove('lock'); step.classList.add('done');
+      pill.className='wz-pill g'; pill.textContent=t('wz_ready');
+      btn.disabled=false; btn.textContent=t('wz_s3again'); view.style.display='';
+    }else{
+      step.classList.remove('done');
+      if(ok){step.classList.remove('lock');} else {step.classList.add('lock');}
+      pill.className='wz-pill '+(ok?'a':'m'); pill.textContent=ok?t('wz_pill_cur'):'🔒';
+      btn.disabled=!ok; btn.textContent=t('wz_s3btn'); view.style.display='none';
+    }
+    if(typeof wzPubRender==='function')wzPubRender();  // step 4 depends on step 3
+  }
+  $('wzSiteBtn').addEventListener('click',function(){
+    if($('wzSiteBtn').disabled)return;
+    var niche=($('wzNiche').value||'').trim();
+    if(!niche||!wzResolveCity())return;
+    var info=$('wzSiteInfo'); info.textContent=t('wz_site_building');
+    $('wzSiteBtn').disabled=true;
+    fetch('/api/site/generate',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({niche:niche, city:wzCampCity()})})
+      .then(function(r){return r.json()}).then(function(d){
+        $('wzSiteBtn').disabled=false;
+        if(!d.ok){ info.textContent='⚠ '+(d.error||''); wzSiteRender(); return; }
+        wzSiteBuilt=true; wzSitePreview=d.preview_url; wzSiteUrl=d.url||d.preview_url;
+        wzSiteSlug=d.slug; wzPublished=false;   // fresh build → not yet published
+        $('wzSiteView').href=d.preview_url;
+        if($('wzLink'))$('wzLink').value=wzSiteUrl;   // autofill step 6 link
+        info.textContent=d.url?('🔗 '+d.url):t('wz_site_local');
+        wzSiteRender();
+      }).catch(function(e){ $('wzSiteBtn').disabled=false; info.textContent=t('a_server')+e; });
+  });
+
+  // ---- Publish to subdomain (step 4) ----
+  var wzSiteSlug=null, wzPublished=false, wzPubUrl=null;
+  function wzPubRender(){
+    var step=$('wzS4'), pill=$('wzS4Pill'), btn=$('wzPubBtn'), view=$('wzPubView');
+    if(wzPublished){
+      step.classList.remove('lock'); step.classList.add('done');
+      pill.className='wz-pill g'; pill.textContent=t('wz_ready');
+      btn.disabled=false; btn.textContent=t('wz_s4again'); view.style.display=wzPubUrl?'':'none';
+    }else if(wzSiteBuilt){
+      step.classList.remove('done','lock');
+      pill.className='wz-pill a'; pill.textContent=t('wz_pill_cur');
+      btn.disabled=false; btn.textContent=t('wz_s4btn'); view.style.display='none';
+    }else{
+      step.classList.remove('done'); step.classList.add('lock');
+      pill.className='wz-pill m'; pill.textContent='🔒';
+      btn.disabled=true; view.style.display='none';
+    }
+    if(typeof wzBar==='function')wzBar();
+  }
+  $('wzPubBtn').addEventListener('click',function(){
+    if($('wzPubBtn').disabled||!wzSiteSlug)return;
+    var info=$('wzPubInfo'); info.textContent=t('wz_pub_ing'); $('wzPubBtn').disabled=true;
+    fetch('/api/site/deploy',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({slug:wzSiteSlug})})
+      .then(function(r){return r.json()}).then(function(d){
+        $('wzPubBtn').disabled=false;
+        if(!d.ok){ info.textContent='⚠ '+(d.error||''); return; }
+        wzPublished=true; wzPubUrl=d.url||null;
+        if(wzPubUrl){ $('wzPubView').href=wzPubUrl; if($('wzLink'))$('wzLink').value=wzPubUrl; info.textContent='🔗 '+wzPubUrl; }
+        else { info.textContent=t('wz_pub_nodomain'); }
+        wzPubRender();
+      }).catch(function(e){ $('wzPubBtn').disabled=false; info.textContent=t('a_server')+e; });
   });
 
   // Restore state on load: preload generator data, show last results / resume a job.

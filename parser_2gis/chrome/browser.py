@@ -37,6 +37,9 @@ class ChromeBrowser():
             f'--remote-debugging-port={self._remote_port}',
             f'--user-data-dir={self._profile_path}', '--no-default-browser-check',
             '--no-first-run', '--no-sandbox', '--disable-fre',
+            # /dev/shm is tiny on low-RAM VPS/containers; write shared memory to
+            # /tmp instead so headless Chrome doesn't crash under memory pressure.
+            '--disable-dev-shm-usage',
             '--remote-allow-origins=*',
             f'--js-flags=--expose-gc --max-old-space-size={chrome_options.memory_limit}',
         ]

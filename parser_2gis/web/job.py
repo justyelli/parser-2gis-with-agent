@@ -79,7 +79,8 @@ class ParseJob:
     def count(self) -> int:
         return len(self.collector.docs) if self.collector else 0
 
-    def start(self, config: Configuration, urls: list[str]) -> None:
+    def start(self, config: Configuration, urls: list[str],
+              niche: Optional[str] = None, city: Optional[str] = None) -> None:
         with self._lock:
             if self.running:
                 raise RuntimeError('Парсинг уже запущен')
@@ -89,7 +90,8 @@ class ParseJob:
             self._cancelled = False
             self.collector = CollectorWriter(config.writer)
 
-        self._thread = threading.Thread(target=self._run, args=(config, urls), daemon=True)
+        self._thread = threading.Thread(target=self._run,
+                                        args=(config, urls, niche, city), daemon=True)
         self._thread.start()
 
     def stop(self) -> None:
@@ -112,7 +114,8 @@ class ParseJob:
             self.status = 'idle'
             return True
 
-    def _run(self, config: Configuration, urls: list[str]) -> None:
+    def _run(self, config: Configuration, urls: list[str],
+             niche: Optional[str] = None, city: Optional[str] = None) -> None:
         handler = _ListLogHandler(self.logs)
         logger.addHandler(handler)
         logger.setLevel(logging.INFO)  # ensure INFO progress lines are captured
@@ -156,6 +159,14 @@ class ParseJob:
                                    self.collector._options.model_dump(mode='json'))
                 except Exception as e:
                     logger.error('Не удалось сохранить историю: %s', e)
+                # Outreach: store the parsed businesses as leads for the niche
+                # so a campaign can be built from them later.
+                if config.outreach.enabled and niche:
+                    try:
+                        from ..outreach import capture_leads
+                        capture_leads(self.collector.docs, niche=niche, city_hint=city)
+                    except Exception as e:
+                        logger.error('Не удалось сохранить лиды: %s', e)
             logger.removeHandler(handler)
 
     def results(self) -> list[dict]:

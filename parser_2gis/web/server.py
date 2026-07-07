@@ -7,8 +7,11 @@ import webbrowser
 from functools import lru_cache
 from typing import Any
 
+import requests
+
 from ..config import Configuration
 from ..logger import logger
+from ..outreach import CampaignRunner
 from ..paths import data_path
 from ..writer import WriterOptions, get_writer
 from .history import History
@@ -86,8 +89,13 @@ def _build_config(data: dict[str, Any]) -> Configuration:
     config.filters.require_social = bool(f.get('require_social'))
     config.filters.require_email = bool(f.get('require_email'))
     config.filters.require_website = bool(f.get('require_website'))
+    config.filters.require_no_website = bool(f.get('require_no_website'))
     config.filters.min_rating = float(f.get('min_rating', 0) or 0)
     config.filters.min_reviews = int(f.get('min_reviews', 0) or 0)
+
+    # Outreach: capture leads for a niche when the platform is enabled.
+    o = data.get('outreach', {}) or {}
+    config.outreach.enabled = bool(o.get('enabled'))
     return config
 
 
@@ -104,6 +112,7 @@ def create_app():
     app = Flask(__name__, static_folder=static_dir, static_url_path='/static')
     job = ParseJob()
     history = History()
+    campaign = CampaignRunner()
 
     def _export_send(docs, writer_opts: WriterOptions, fmt: str):
         """Write `docs` to a temp file in `fmt` and send it as a download."""
@@ -126,7 +135,10 @@ def create_app():
             return jsonify({'ok': False, 'error': 'Не указаны ссылки'}), 400
         try:
             config = _build_config(data)
-            job.start(config, urls)
+            o = data.get('outreach', {}) or {}
+            niche = (o.get('niche') or '').strip() or None
+            city = (o.get('city') or '').strip() or None
+            job.start(config, urls, niche=niche, city=city)
         except RuntimeError as e:
             return jsonify({'ok': False, 'error': str(e)}), 409
         except Exception as e:
@@ -231,6 +243,162 @@ def create_app():
     @app.route('/api/history/<hid>', methods=['DELETE'])
     def api_history_delete(hid):
         return jsonify({'ok': history.delete(hid)})
+
+    # ---- WhatsApp gateway proxy (Baileys, Node service) ----
+    # The dashboard talks to the gateway only through these routes, so the
+    # browser never hits the Node service directly (no CORS, one origin).
+    def _outreach_opts():
+        """Outreach settings with env overrides (set these on the VPS)."""
+        o = Configuration().outreach
+        o.gateway_url = os.getenv('WA_GATEWAY_URL', o.gateway_url)
+        o.base_domain = os.getenv('OUTREACH_BASE_DOMAIN', o.base_domain)
+        o.sites_dir = os.getenv('OUTREACH_SITES_DIR', o.sites_dir)
+        o.anthropic_model = os.getenv('OUTREACH_MODEL', o.anthropic_model)
+        return o
+
+    def _wa_url(path: str) -> str:
+        base = _outreach_opts().gateway_url.rstrip('/')
+        return base + path
+
+    @app.route('/api/wa/status')
+    def api_wa_status():
+        try:
+            r = requests.get(_wa_url('/status'), timeout=5)
+            return jsonify(r.json())
+        except Exception:
+            return jsonify({'connected': False, 'hasQr': False,
+                            'user': None, 'error': 'gateway_offline'})
+
+    @app.route('/api/wa/qr')
+    def api_wa_qr():
+        try:
+            r = requests.get(_wa_url('/qr'), timeout=5)
+            return jsonify(r.json())
+        except Exception:
+            return jsonify({'qr': None, 'error': 'gateway_offline'})
+
+    @app.route('/api/wa/logout', methods=['POST'])
+    def api_wa_logout():
+        try:
+            r = requests.post(_wa_url('/logout'), timeout=10)
+            return jsonify(r.json())
+        except Exception:
+            return jsonify({'ok': False, 'error': 'gateway_offline'}), 502
+
+    @app.route('/api/wa/send', methods=['POST'])
+    def api_wa_send():
+        data = request.get_json(force=True, silent=True) or {}
+        try:
+            r = requests.post(_wa_url('/send'), json=data, timeout=30)
+            return jsonify(r.json()), r.status_code
+        except Exception:
+            return jsonify({'ok': False, 'error': 'gateway_offline'}), 502
+
+    # ---- Campaigns (WhatsApp broadcast, step 6) ----
+    @app.route('/api/campaign/leads')
+    def api_campaign_leads():
+        niche = (request.args.get('niche') or '').strip()
+        city = (request.args.get('city') or '').strip() or None
+        if not niche:
+            return jsonify({'count': 0})
+        return jsonify({'count': campaign.leads_count(niche, city)})
+
+    @app.route('/api/campaign/start', methods=['POST'])
+    def api_campaign_start():
+        data = request.get_json(force=True, silent=True) or {}
+        niche = (data.get('niche') or '').strip()
+        city = (data.get('city') or '').strip() or None
+        message = (data.get('message') or '').strip()
+        link = (data.get('link') or '').strip() or None
+        dry_run = bool(data.get('dry_run'))
+        if not niche or not message:
+            return jsonify({'ok': False, 'error': 'Нужны ниша и текст сообщения'}), 400
+        opts = _outreach_opts()
+        gw = opts.gateway_url
+        try:
+            campaign.start(opts, gw, niche=niche, city=city,
+                           message_template=message, link=link, dry_run=dry_run)
+        except RuntimeError as e:
+            return jsonify({'ok': False, 'error': str(e)}), 409
+        except Exception as e:
+            logger.error('Не удалось запустить рассылку: %s', e)
+            return jsonify({'ok': False, 'error': str(e)}), 400
+        return jsonify({'ok': True})
+
+    @app.route('/api/campaign/status')
+    def api_campaign_status():
+        return jsonify(campaign.snapshot())
+
+    @app.route('/api/campaign/stop', methods=['POST'])
+    def api_campaign_stop():
+        campaign.stop()
+        return jsonify({'ok': True})
+
+    # ---- AI site generation (step 3) ----
+    @app.route('/api/site/generate', methods=['POST'])
+    def api_site_generate():
+        from ..outreach import db as odb
+        from ..outreach import sitegen
+        data = request.get_json(force=True, silent=True) or {}
+        niche = (data.get('niche') or '').strip()
+        city = (data.get('city') or '').strip() or None
+        phone = (data.get('phone') or '').strip() or None
+        if not niche:
+            return jsonify({'ok': False, 'error': 'Не указана ниша'}), 400
+        opts = _outreach_opts()
+        try:
+            info = sitegen.build_site(niche, city, model=opts.anthropic_model, phone=phone)
+        except RuntimeError as e:
+            return jsonify({'ok': False, 'error': str(e)}), 400
+        except Exception as e:
+            logger.error('Ошибка генерации сайта: %s', e)
+            return jsonify({'ok': False, 'error': str(e)}), 500
+
+        url = None
+        if opts.base_domain:
+            scheme = 'https' if opts.use_https else 'http'
+            url = f"{scheme}://{info['slug']}.{opts.base_domain}"
+        try:
+            with odb.session() as conn:
+                odb.create_site(conn, niche=niche, city=city, slug=info['slug'],
+                                url=url, status='built')
+        except Exception as e:
+            logger.error('Не удалось сохранить сайт в БД: %s', e)
+        return jsonify({'ok': True, 'slug': info['slug'], 'url': url,
+                        'preview_url': f"/api/site/preview/{info['slug']}/"})
+
+    @app.route('/api/site/preview/<slug>/')
+    @app.route('/api/site/preview/<slug>')
+    def api_site_preview(slug):
+        from ..outreach import sitegen
+        site_dir = sitegen.local_sites_dir() / slug
+        if not (site_dir / 'index.html').exists():
+            return jsonify({'ok': False, 'error': 'Сайт не найден'}), 404
+        return send_from_directory(str(site_dir), 'index.html')
+
+    # ---- Deploy site to a subdomain (step 4) ----
+    @app.route('/api/site/deploy', methods=['POST'])
+    def api_site_deploy():
+        from ..outreach import db as odb
+        from ..outreach import deploy as odeploy
+        data = request.get_json(force=True, silent=True) or {}
+        slug = (data.get('slug') or '').strip()
+        if not slug:
+            return jsonify({'ok': False, 'error': 'Не указан сайт'}), 400
+        opts = _outreach_opts()
+        try:
+            info = odeploy.deploy_site(slug, opts)
+        except RuntimeError as e:
+            return jsonify({'ok': False, 'error': str(e)}), 400
+        except Exception as e:
+            logger.error('Ошибка публикации сайта: %s', e)
+            return jsonify({'ok': False, 'error': str(e)}), 500
+        try:
+            with odb.session() as conn:
+                odb.mark_site_deployed(conn, slug, info.get('url'))
+        except Exception as e:
+            logger.error('Не удалось обновить статус сайта: %s', e)
+        return jsonify({'ok': True, 'url': info.get('url'), 'path': info.get('path')})
 
     return app
 

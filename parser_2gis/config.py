@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from .chrome import ChromeOptions
 from .common import report_from_validation_error
 from .logger import LogOptions, logger
+from .outreach import OutreachOptions
 from .parser import ParserOptions
 from .paths import user_path
 from .version import config_version
@@ -24,6 +25,7 @@ class Configuration(BaseModel):
     chrome: ChromeOptions = Field(default_factory=ChromeOptions)
     parser: ParserOptions = Field(default_factory=ParserOptions)
     filters: FilterOptions = Field(default_factory=FilterOptions)
+    outreach: OutreachOptions = Field(default_factory=OutreachOptions)
     path: Optional[pathlib.Path] = None
     version: str = config_version
 
