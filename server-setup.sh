@@ -14,7 +14,7 @@ APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SITES_DIR="/var/www/sites"
 ENV_FILE="/etc/parser-2gis.env"
 RUN_USER="${SUDO_USER:-root}"
-DOMAIN_RE="$(printf '%s' "$DOMAIN" | sed 's/\./\\./g')"   # экранируем точки для regex
+DOMAIN_RE="${DOMAIN//./\\.}"   # экранируем точки для nginx-regex
 
 if [ "$(id -u)" -ne 0 ]; then echo "Запусти через sudo: sudo bash server-setup.sh"; exit 1; fi
 echo "==> Домен: $DOMAIN | Каталог: $APP_DIR | Пользователь: $RUN_USER"
