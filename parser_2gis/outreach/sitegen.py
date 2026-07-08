@@ -144,10 +144,10 @@ def render_html(content: dict[str, Any], *, niche: str, city: Optional[str],
 
     eyebrow = f'{title}{where}'
     services_html = ''.join(
-        f'<article class="card"><div class="card-n">{i:02d}</div>'
-        f'<h3>{esc(s.get("title"))}</h3><p>{esc(s.get("description"))}</p></article>'
-        for i, s in enumerate(services, 1)
-    ) or ''
+        f'<article class="card"><h3>{esc(s.get("title"))}</h3>'
+        f'<p>{esc(s.get("description"))}</p></article>'
+        for s in services
+    )
     adv_html = ''.join(
         f'<div class="adv"><span class="adv-ic">✓</span><span>{esc(a)}</span></div>'
         for a in advantages
@@ -214,14 +214,12 @@ def render_html(content: dict[str, Any], *, niche: str, city: Optional[str],
   .about p{{font-size:19px;color:#334155;max-width:760px}}
 
   .grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px}}
-  .card{{position:relative;border:1px solid var(--line);border-radius:18px;padding:26px 24px;background:#fff;
+  .card{{position:relative;border:1px solid var(--line);border-radius:18px;padding:28px 24px;background:#fff;
         transition:transform .18s,box-shadow .18s;overflow:hidden}}
-  .card:before{{content:"";position:absolute;left:0;top:0;height:4px;width:100%;
-              background:linear-gradient(90deg,var(--c1),var(--c2));opacity:0;transition:.18s}}
+  .card:before{{content:"";position:absolute;left:0;top:0;height:3px;width:100%;
+              background:linear-gradient(90deg,var(--c1),var(--c2))}}
   .card:hover{{transform:translateY(-4px);box-shadow:0 18px 40px rgba(15,23,42,.10)}}
-  .card:hover:before{{opacity:1}}
-  .card-n{{font-size:13px;font-weight:800;color:var(--c1);letter-spacing:1px;opacity:.6}}
-  .card h3{{font-size:19px;font-weight:700;margin:10px 0 8px}}
+  .card h3{{font-size:19px;font-weight:700;margin-bottom:8px}}
   .card p{{color:var(--muted);font-size:15px}}
 
   .adv-grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}}
