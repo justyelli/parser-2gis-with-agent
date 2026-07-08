@@ -40,12 +40,15 @@ apt-get update -y
 apt-get install -y certbot
 
 echo "==> [2/4] Выпуск wildcard-сертификата (DNS-проверка)"
+# Только *.домен -> нужна ВСЕГО ОДНА TXT-запись (panel и все поддомены сайтов
+# попадают под wildcard). --cert-name фиксирует путь /etc/letsencrypt/live/<домен>/.
 if [ -f "${CERT_DIR}/fullchain.pem" ]; then
   echo "    Сертификат уже есть — пропускаю выпуск."
 else
   certbot certonly --manual --preferred-challenges dns \
     --agree-tos --no-eff-email -m "$EMAIL" \
-    -d "*.${DOMAIN}" -d "${DOMAIN}"
+    --cert-name "${DOMAIN}" \
+    -d "*.${DOMAIN}"
 fi
 
 echo "==> [3/4] Пересборка Nginx-конфига с HTTPS"
