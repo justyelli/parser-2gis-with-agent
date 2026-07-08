@@ -12,7 +12,7 @@ set -euo pipefail
 DOMAIN="${1:-justmysite.site}"
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SITES_DIR="/var/www/sites"
-ENV_FILE="/etc/parser-2gis.env"
+ENV_FILE="$APP_DIR/.env"   # единый .env в каталоге проекта (git-ignored)
 RUN_USER="${SUDO_USER:-root}"
 DOMAIN_RE="${DOMAIN//./\\.}"   # экранируем точки для nginx-regex
 
@@ -48,7 +48,7 @@ echo "==> [5/8] Python venv + зависимости"
 python3 -m venv "$APP_DIR/.venv"
 "$APP_DIR/.venv/bin/pip" install --upgrade pip >/dev/null
 "$APP_DIR/.venv/bin/pip" install -e "$APP_DIR"
-"$APP_DIR/.venv/bin/pip" install anthropic
+"$APP_DIR/.venv/bin/pip" install openai
 
 echo "==> [6/8] WhatsApp-шлюз (npm install)"
 ( cd "$APP_DIR/whatsapp-gateway" && npm install )
@@ -86,13 +86,20 @@ fi
 echo "==> [8/8] Env-файл + systemd-сервисы"
 if [ ! -f "$ENV_FILE" ]; then
 cat > "$ENV_FILE" <<ENV
-ANTHROPIC_API_KEY=ВСТАВЬ_КЛЮЧ_СЮДА
+GLM_API_KEY=ВСТАВЬ_КЛЮЧ_СЮДА
+# Необязательно: свой OpenAI-совместимый эндпоинт GLM
+# (Zhipu CN: https://open.bigmodel.cn/api/paas/v4/)
+GLM_BASE_URL=https://api.z.ai/api/paas/v4/
 OUTREACH_BASE_DOMAIN=${DOMAIN}
 OUTREACH_SITES_DIR=${SITES_DIR}
 WA_GATEWAY_URL=http://127.0.0.1:8667
-OUTREACH_MODEL=claude-opus-4-8
+OUTREACH_MODEL=glm-5
+# http — из коробки (Nginx на 80). enable-ssl.sh выпустит wildcard-SSL
+# и переключит это в true.
+OUTREACH_USE_HTTPS=false
 ENV
 chmod 600 "$ENV_FILE"
+chown "$RUN_USER" "$ENV_FILE" 2>/dev/null || true
 fi
 
 cat > /etc/systemd/system/wa-gateway.service <<UNIT
@@ -115,7 +122,7 @@ Description=Outreach dashboard (Flask)
 After=network.target
 [Service]
 WorkingDirectory=${APP_DIR}
-EnvironmentFile=${ENV_FILE}
+EnvironmentFile=-${ENV_FILE}
 ExecStart=${APP_DIR}/.venv/bin/python -c "from parser_2gis.web.server import create_app; create_app().run(host='127.0.0.1', port=8666)"
 Restart=always
 RestartSec=3
@@ -136,8 +143,8 @@ echo "      A   *.${DOMAIN}     -> ${IP:-5.183.253.70}"
 echo "      A   ${DOMAIN}       -> ${IP:-5.183.253.70}"
 echo "      A   panel.${DOMAIN} -> ${IP:-5.183.253.70}"
 echo
-echo " 2) Ключ Anthropic:"
-echo "      nano ${ENV_FILE}          # впиши ANTHROPIC_API_KEY"
+echo " 2) Ключ GLM / Z.ai:"
+echo "      nano ${ENV_FILE}          # впиши GLM_API_KEY"
 echo "      systemctl restart outreach-dashboard"
 echo
 echo " 3) Открой панель:  http://panel.${DOMAIN}   (после того как DNS обновится)"
@@ -145,5 +152,5 @@ echo "      Шаг 5 покажет QR — отсканируй телефоно
 echo
 echo " Логи:   journalctl -u outreach-dashboard -f"
 echo "         journalctl -u wa-gateway -f"
-echo " SSL (wildcard, опционально): см. SETUP.md §5.4"
+echo " HTTPS (wildcard, опционально):  sudo bash enable-ssl.sh ${DOMAIN}"
 echo "====================================================================="

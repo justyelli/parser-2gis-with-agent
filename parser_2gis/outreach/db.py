@@ -9,7 +9,7 @@ from typing import Any, Iterator, Optional
 from ..paths import user_path
 
 # Schema version bumped when the DDL below changes in a breaking way.
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS leads (
@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS messages (
     lead_id     INTEGER NOT NULL REFERENCES leads(id),
     status      TEXT NOT NULL DEFAULT 'queued',  -- queued | sent | delivered | failed
     error       TEXT,
+    text        TEXT,                            -- the exact message that was sent
     sent_at     TEXT,
     UNIQUE(campaign_id, lead_id)
 );
@@ -86,9 +87,17 @@ def connect(db_path: Optional[Path] = None) -> sqlite3.Connection:
     conn.execute('PRAGMA journal_mode=WAL')
     conn.execute('PRAGMA foreign_keys=ON')
     conn.executescript(_SCHEMA)
+    _migrate(conn)
     conn.execute(f'PRAGMA user_version={SCHEMA_VERSION}')
     conn.commit()
     return conn
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    """Apply lightweight, additive migrations to a pre-existing database."""
+    cols = {r['name'] for r in conn.execute('PRAGMA table_info(messages)')}
+    if 'text' not in cols:  # v1 -> v2: store the exact sent message
+        conn.execute('ALTER TABLE messages ADD COLUMN text TEXT')
 
 
 @contextmanager
@@ -228,7 +237,8 @@ def next_queued(conn: sqlite3.Connection, campaign_id: int) -> Optional[dict[str
     """The next queued message joined with its lead (phone/name), or None."""
     row = conn.execute(
         """
-        SELECT m.id AS msg_id, m.lead_id, l.name, l.phone_wa, l.phone, l.city
+        SELECT m.id AS msg_id, m.lead_id, l.name, l.phone_wa, l.phone,
+               l.city, l.address, l.niche
         FROM messages m JOIN leads l ON l.id = m.lead_id
         WHERE m.campaign_id = ? AND m.status = 'queued'
         ORDER BY m.id LIMIT 1
@@ -239,11 +249,21 @@ def next_queued(conn: sqlite3.Connection, campaign_id: int) -> Optional[dict[str
 
 
 def set_message_status(conn: sqlite3.Connection, msg_id: int, status: str,
-                       error: Optional[str] = None) -> None:
-    """Update a message's status; stamps sent_at for terminal send states."""
+                       error: Optional[str] = None,
+                       text: Optional[str] = None) -> None:
+    """Update a message's status; stamps sent_at for terminal send states.
+
+    When ``text`` is given, the exact message body is stored too (so an
+    operator can review what each business actually received).
+    """
     sent_at = _now() if status in ('sent', 'delivered') else None
-    conn.execute('UPDATE messages SET status = ?, error = ?, sent_at = ? WHERE id = ?',
-                 (status, error, sent_at, msg_id))
+    if text is not None:
+        conn.execute(
+            'UPDATE messages SET status = ?, error = ?, sent_at = ?, text = ? WHERE id = ?',
+            (status, error, sent_at, text, msg_id))
+    else:
+        conn.execute('UPDATE messages SET status = ?, error = ?, sent_at = ? WHERE id = ?',
+                     (status, error, sent_at, msg_id))
 
 
 def campaign_stats(conn: sqlite3.Connection, campaign_id: int) -> dict[str, int]:

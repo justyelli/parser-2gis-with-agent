@@ -344,6 +344,8 @@
           <div class="wz-h"><span data-i18n="wz_s6">Сілтемені тарату</span><span class="wz-pill m" id="wzS6Pill">🔒</span></div>
           <div class="wz-d" data-i18n="wz_s6d">Сілтемені бизнестерге кідіріспен жібереміз (қауіпсіз).</div>
           <div id="wzCampFields" style="display:none">
+            <label class="wz-mini" style="display:flex;gap:6px;align-items:center;margin-top:8px;cursor:pointer"><input type="checkbox" id="wzAiMsg" checked style="width:auto"> <span data-i18n="wz_ai_msg">✨ ИИ әр бизнеске жеке хабарлама жазады</span></label>
+            <div class="wz-mini" id="wzAiHint" data-i18n="wz_ai_hint_on" style="margin-top:4px;opacity:.75">Төмендегі мәтін — бриф/ұсыныс. ИИ әрқайсысына атын атап, бірегей хабарлама жазады.</div>
             <textarea id="wzMsg" class="wz-in" style="min-height:66px;margin-top:8px"></textarea>
             <input id="wzLink" class="wz-in" data-i18n-ph="wz_link_ph" placeholder="Сайт сілтемесі (қолмен қоюға болады)" style="margin-top:8px" autocomplete="off">
             <label class="wz-mini" style="display:flex;gap:6px;align-items:center;margin-top:8px;cursor:pointer"><input type="checkbox" id="wzDry" checked style="width:auto"> <span data-i18n="wz_dry">Сынақ прогон (нақты жіберусіз)</span></label>
@@ -554,6 +556,7 @@
       wz_s5:'WhatsApp қосу', wz_s5d:'QR-кодты бір рет сканерлеңіз — нөмір таратуға дайын. Кез келген уақытта қосуға болады.', wz_s5btn:'WhatsApp қосу',
       wz_connected:'Қосылған', wz_wa_need:'Қосу керек', wz_wa_off:'Шлюз офлайн', wz_wa_disconnect:'Ажырату', wz_wa_confirm:'WhatsApp ажыратылсын ба?', wz_wa_scan:'WhatsApp → Байланысқан құрылғылар → QR сканерлеңіз',
       wz_dry:'Сынақ прогон (нақты жіберусіз)', wz_link_ph:'Сайт сілтемесі (қолмен қоюға болады)', wz_leads:'лид', wz_need_wa:'Алдымен WhatsApp қосыңыз (5-қадам)', wz_camp_running:'Жіберілуде', wz_sent:'жіберілді', wz_failed:'қате', wz_send_again:'Қайта жіберу',
+      wz_ai_msg:'✨ ИИ әр бизнеске жеке хабарлама жазады', wz_ai_hint_on:'Төмендегі мәтін — бриф/ұсыныс. ИИ әрқайсысына атын атап, бірегей хабарлама жазады.', wz_brief_ph:'Ұсыныс/бриф ИИ үшін (мыс.: демо-сайт тегін, ұнаса — қалдырасыз)…', wa_tpl_ph2:'Хабарлама мәтіні… {name} және {link} қолдана аласыз', wz_no_link_confirm:'Сайтқа сілтеме енгізілмеген. Сілтемесіз жіберейік пе?',
       wz_s6:'Сілтемені тарату', wz_s6d:'Сілтемені бизнестерге кідіріспен жібереміз (қауіпсіз).', wz_s6btn:'Таратуды бастау →',
       wz_find:'🔎 Табу', wz_again:'🔄 Қайта табу', wz_stop:'Тоқтату', wz_see:'Тізімді көру →',
       wz_adv:'⚙️ Кеңейтілген режим', wz_back:'← Мастерге оралу',
@@ -601,6 +604,7 @@
       wz_s5:'Подключите WhatsApp', wz_s5d:'Отсканируйте QR-код один раз — номер готов к рассылке. Подключить можно в любой момент.', wz_s5btn:'Подключить WhatsApp',
       wz_connected:'Подключено', wz_wa_need:'Не подключён', wz_wa_off:'Шлюз офлайн', wz_wa_disconnect:'Отключить', wz_wa_confirm:'Отключить WhatsApp?', wz_wa_scan:'WhatsApp → Связанные устройства → наведи на QR',
       wz_dry:'Тестовый прогон (без реальной отправки)', wz_link_ph:'Ссылка на сайт (можно вставить вручную)', wz_leads:'лид.', wz_need_wa:'Сначала подключите WhatsApp (шаг 5)', wz_camp_running:'Идёт отправка', wz_sent:'отправлено', wz_failed:'ошибок', wz_send_again:'Отправить снова',
+      wz_ai_msg:'✨ ИИ пишет уникальное сообщение каждому бизнесу', wz_ai_hint_on:'Текст ниже — бриф/оффер. ИИ напишет каждому персонально, обращаясь по названию.', wz_brief_ph:'Оффер/бриф для ИИ (напр.: демо-сайт бесплатно, платно только если понравится)…', wa_tpl_ph2:'Текст сообщения… можно {name} и {link}', wz_no_link_confirm:'Ссылка на сайт не указана. Отправить сообщения без ссылки?',
       wz_s6:'Разошлите ссылку', wz_s6d:'Отправим ссылку бизнесам с задержками (безопасно).', wz_s6btn:'Начать рассылку →',
       wz_find:'🔎 Найти', wz_again:'🔄 Найти заново', wz_stop:'Стоп', wz_see:'Смотреть список →',
       wz_adv:'⚙️ Расширенный режим', wz_back:'← Вернуться к мастеру',
@@ -1201,11 +1205,21 @@
   // ---- Campaign / broadcast (step 6) ----
   var WZ_MSG={kk:'Сәлеметсіз бе! Бизнесіңізге арналған дайын сайт: {link}',
               ru:'Здравствуйте! Готовый сайт для вашего бизнеса: {link}'};
+  // Brief/offer used as AI guidance (the model writes each message itself).
+  var WZ_BRIEF={kk:'Бизнесіңізге дайын сайт-визитка жасадым — демо ретінде тегін. Ұнаса, өзіңізде қалдырасыз.',
+                ru:'Сделал для вашего бизнеса готовый сайт-визитку — бесплатно как демо. Если понравится, оставите себе.'};
   var wzCampPoll=null, wzCampLeads=0;
+  function wzAiOn(){ return $('wzAiMsg') && $('wzAiMsg').checked; }
   function wzMsgSync(){
     var el=$('wzMsg'); if(!el)return;
     var v=(el.value||'').trim();
-    if(v===''||v===WZ_MSG.kk||v===WZ_MSG.ru){ el.value=WZ_MSG[LANG]||WZ_MSG.ru; }
+    // Only replace when the field still holds one of the known defaults, so we
+    // never clobber text the user typed.
+    var isDefault=(v===''||v===WZ_MSG.kk||v===WZ_MSG.ru||v===WZ_BRIEF.kk||v===WZ_BRIEF.ru);
+    var src=wzAiOn()?WZ_BRIEF:WZ_MSG;
+    if(isDefault){ el.value=src[LANG]||src.ru; }
+    el.placeholder=wzAiOn()?t('wz_brief_ph'):t('wa_tpl_ph2');
+    var hint=$('wzAiHint'); if(hint){ hint.style.display=wzAiOn()?'':'none'; }
   }
   function wzCampNiche(){ return ($('wzNiche').value||'').trim(); }
   function wzCampCity(){ return ($('wzCityName')&&$('wzCityName').value)||''; }
@@ -1264,8 +1278,10 @@
     if(!wzCampNiche())return;
     var dry=$('wzDry').checked;
     if(!dry && !wzWaConnected){ alert(t('wz_need_wa')); return; }
+    var link=$('wzLink').value.trim();
+    if(!link && !confirm(t('wz_no_link_confirm'))) return;
     var body={ niche:wzCampNiche(), city:wzCampCity(), message:$('wzMsg').value,
-               link:$('wzLink').value.trim(), dry_run:dry };
+               link:link, dry_run:dry, ai_personalize:wzAiOn() };
     fetch('/api/campaign/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
       .then(function(r){return r.json()}).then(function(d){
         if(!d.ok){alert(d.error||t('a_start_err'));return;}
@@ -1274,6 +1290,7 @@
       }).catch(function(e){alert(t('a_server')+e)});
   });
   $('wzSendStop').addEventListener('click',function(){ fetch('/api/campaign/stop',{method:'POST'}).catch(function(){}); });
+  if($('wzAiMsg'))$('wzAiMsg').addEventListener('change',wzMsgSync);
   $('wzNiche').addEventListener('input',wzCampRefresh);
   wzCampStatus();
 

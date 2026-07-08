@@ -5,6 +5,7 @@ import os
 import tempfile
 import webbrowser
 from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 import requests
@@ -29,6 +30,32 @@ COUNTRIES = {
     'cl': 'Чили', 'qa': 'Катар', 'om': 'Оман', 'bh': 'Бахрейн',
     'kw': 'Кувейт', 'iq': 'Ирак',
 }
+
+
+def _load_dotenv() -> None:
+    """Fill missing env vars from a project-root .env file.
+
+    Real environment variables always win (shell exports, systemd
+    EnvironmentFile), so this only backfills what's absent. Uses python-dotenv
+    when installed, else a tiny built-in parser — no extra dependency required.
+    """
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(override=False)
+        return
+    except ImportError:
+        pass
+    candidates = (Path.cwd() / '.env', Path(__file__).resolve().parents[2] / '.env')
+    for env_file in candidates:
+        if not env_file.is_file():
+            continue
+        for raw in env_file.read_text(encoding='utf-8').splitlines():
+            line = raw.strip()
+            if not line or line.startswith('#') or '=' not in line:
+                continue
+            key, _, value = line.partition('=')
+            os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+        break
 
 
 @lru_cache(maxsize=1)
@@ -101,6 +128,7 @@ def _build_config(data: dict[str, Any]) -> Configuration:
 
 def create_app():
     """Create the Flask app for the dashboard. Requires the `web` extra."""
+    _load_dotenv()
     try:
         from flask import Flask, jsonify, request, send_file, send_from_directory
     except ImportError as e:  # pragma: no cover
@@ -253,7 +281,12 @@ def create_app():
         o.gateway_url = os.getenv('WA_GATEWAY_URL', o.gateway_url)
         o.base_domain = os.getenv('OUTREACH_BASE_DOMAIN', o.base_domain)
         o.sites_dir = os.getenv('OUTREACH_SITES_DIR', o.sites_dir)
-        o.anthropic_model = os.getenv('OUTREACH_MODEL', o.anthropic_model)
+        o.llm_model = os.getenv('OUTREACH_MODEL', o.llm_model)
+        # HTTPS only works once a wildcard cert is installed (see enable-ssl.sh);
+        # until then keep links on http so they open. Controlled per-VPS by env.
+        https_env = os.getenv('OUTREACH_USE_HTTPS')
+        if https_env is not None:
+            o.use_https = https_env.strip().lower() in ('1', 'true', 'yes', 'on')
         return o
 
     def _wa_url(path: str) -> str:
@@ -311,13 +344,15 @@ def create_app():
         message = (data.get('message') or '').strip()
         link = (data.get('link') or '').strip() or None
         dry_run = bool(data.get('dry_run'))
+        ai_personalize = bool(data.get('ai_personalize'))
         if not niche or not message:
             return jsonify({'ok': False, 'error': 'Нужны ниша и текст сообщения'}), 400
         opts = _outreach_opts()
         gw = opts.gateway_url
         try:
             campaign.start(opts, gw, niche=niche, city=city,
-                           message_template=message, link=link, dry_run=dry_run)
+                           message_template=message, link=link, dry_run=dry_run,
+                           ai_personalize=ai_personalize)
         except RuntimeError as e:
             return jsonify({'ok': False, 'error': str(e)}), 409
         except Exception as e:
@@ -347,7 +382,7 @@ def create_app():
             return jsonify({'ok': False, 'error': 'Не указана ниша'}), 400
         opts = _outreach_opts()
         try:
-            info = sitegen.build_site(niche, city, model=opts.anthropic_model, phone=phone)
+            info = sitegen.build_site(niche, city, model=opts.llm_model, phone=phone)
         except RuntimeError as e:
             return jsonify({'ok': False, 'error': str(e)}), 400
         except Exception as e:

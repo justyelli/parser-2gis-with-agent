@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import json
-import os
 import re
 from pathlib import Path
 from typing import Any, Optional
 
 from ..logger import logger
 from ..paths import user_path
+from . import llm
 
 # Cyrillic -> Latin transliteration for building subdomain slugs.
 _TRANSLIT = {
@@ -49,9 +49,19 @@ _SITE_SCHEMA = {
 }
 
 _SYSTEM = (
-    'Ты — копирайтер и маркетолог, пишешь тексты для сайта-визитки малого бизнеса '
-    'на русском языке. Пиши живо, конкретно и по делу, без канцелярита и «воды». '
-    'Верни ТОЛЬКО данные по заданной схеме.'
+    'Ты — сильный копирайтер и маркетолог, пишешь продающие тексты для сайта-'
+    'визитки малого бизнеса на русском языке. Правила:\n'
+    '— Пиши живо, конкретно, на языке выгод для клиента; никакого канцелярита, '
+    'штампов («широкий спектр услуг», «индивидуальный подход», «команда '
+    'профессионалов») и «воды».\n'
+    '— Заголовок (hero_title) — короткий и цепляющий (до 60 символов), про '
+    'результат для клиента, а не про компанию.\n'
+    '— Услуги: конкретные, с понятной пользой в описании (1 предложение).\n'
+    '— Преимущества: осязаемые и правдоподобные, без выдуманных цифр, лицензий '
+    'и гарантий, которых не может быть у типового бизнеса.\n'
+    '— Если указан город — сделай пару формулировок локально-релевантными.\n'
+    '— Тексты общие для ниши (без названия конкретной компании).\n'
+    'Верни ТОЛЬКО данные по заданной JSON-схеме.'
 )
 
 
@@ -77,36 +87,28 @@ def local_sites_dir() -> Path:
 
 
 def generate_site_content(niche: str, city: Optional[str], model: str) -> dict[str, Any]:
-    """Ask Claude for the site copy (structured JSON) for a niche.
+    """Ask GLM for the site copy (structured JSON) for a niche.
 
-    Requires the `anthropic` package and the ANTHROPIC_API_KEY env var.
-    Raises RuntimeError with a friendly message if either is missing.
+    Uses the GLM (Z.ai / Zhipu) OpenAI-compatible API via :mod:`llm`. Requires
+    the `openai` package and the GLM_API_KEY env var; GLM_BASE_URL overrides the
+    endpoint. Raises RuntimeError with a friendly message on a missing prereq.
     """
-    if not os.getenv('ANTHROPIC_API_KEY'):
-        raise RuntimeError('Не задан ANTHROPIC_API_KEY (ключ Claude API).')
-    try:
-        import anthropic
-    except ImportError as e:
-        raise RuntimeError('Не установлен пакет anthropic (pip install anthropic).') from e
-
-    client = anthropic.Anthropic()
+    client = llm.make_client()
     where = f' в городе {city}' if city else ''
+    schema_json = json.dumps(_SITE_SCHEMA, ensure_ascii=False, indent=2)
     prompt = (
         f'Составь тексты для сайта-визитки бизнеса ниши «{niche}»{where}. '
         f'Дай 4-6 услуг и 3-5 преимуществ. Тексты — общие для ниши, без конкретного '
-        f'названия компании.'
+        f'названия компании.\n\n'
+        f'Верни ТОЛЬКО валидный JSON строго по этой JSON-схеме '
+        f'(без markdown и пояснений):\n{schema_json}'
     )
-    resp = client.messages.create(
-        model=model,
-        max_tokens=4000,
-        system=_SYSTEM,
-        messages=[{'role': 'user', 'content': prompt}],
-        output_config={'format': {'type': 'json_schema', 'schema': _SITE_SCHEMA}},
-    )
-    text = next((b.text for b in resp.content if b.type == 'text'), None)
-    if not text:
-        raise RuntimeError('Пустой ответ от Claude API.')
-    return json.loads(text)
+    messages = [
+        {'role': 'system', 'content': _SYSTEM},
+        {'role': 'user', 'content': prompt},
+    ]
+    text = llm.complete(client, llm.models_for(model), messages, max_tokens=4000)
+    return llm.parse_json(text)
 
 
 def render_html(content: dict[str, Any], *, niche: str, city: Optional[str],

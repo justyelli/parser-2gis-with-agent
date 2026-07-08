@@ -40,7 +40,8 @@ class CampaignRunner:
 
     def start(self, opts: OutreachOptions, gateway_url: str, *, niche: str,
               city: Optional[str], message_template: str,
-              link: Optional[str] = None, dry_run: bool = False) -> None:
+              link: Optional[str] = None, dry_run: bool = False,
+              ai_personalize: bool = False) -> None:
         with self._lock:
             if self.running:
                 raise RuntimeError('Рассылка уже запущена')
@@ -53,7 +54,8 @@ class CampaignRunner:
 
         self._thread = threading.Thread(
             target=self._run,
-            args=(opts, gateway_url, niche, city, message_template, link, dry_run),
+            args=(opts, gateway_url, niche, city, message_template, link,
+                  dry_run, ai_personalize),
             daemon=True,
         )
         self._thread.start()
@@ -96,11 +98,31 @@ class CampaignRunner:
                 .replace('{name}', name or '')
                 .replace('{link}', link or ''))
 
+    def _compose(self, msg: dict, message_template: str, link: Optional[str],
+                 ai_personalize: bool, writer_client: Any, model: str) -> str:
+        """Build the message body for one lead.
+
+        In AI mode, ``message_template`` is treated as the sender's brief/offer
+        and GLM writes a unique message per business. Any failure falls back to
+        the plain {name}/{link} template so the campaign never stalls.
+        """
+        if ai_personalize and writer_client is not None:
+            try:
+                from . import messagegen
+                return messagegen.generate_message(
+                    msg, link=link, brief=message_template,
+                    model=model, client=writer_client)
+            except Exception as e:
+                logger.warning('  ИИ не смог написать для «%s» (%s) — шаблон.',
+                               msg.get('name'), e)
+        return self._render(message_template, name=msg.get('name'), link=link)
+
     # --- worker -----------------------------------------------------------
 
     def _run(self, opts: OutreachOptions, gateway_url: str, niche: str,
              city: Optional[str], message_template: str,
-             link: Optional[str], dry_run: bool) -> None:
+             link: Optional[str], dry_run: bool,
+             ai_personalize: bool = False) -> None:
         try:
             with db.session() as conn:
                 leads = db.leads_for_niche(conn, niche, city)
@@ -113,8 +135,22 @@ class CampaignRunner:
                     message_template=message_template, status='running')
                 db.queue_messages(conn, campaign_id, [int(l['id']) for l in leads])
             self.campaign_id = campaign_id
-            logger.info('Рассылка запущена: ниша «%s», лидов %d%s',
-                        niche, len(leads), ' (dry-run)' if dry_run else '')
+
+            # Build the GLM client once (reused for every lead). If it can't be
+            # set up (no key/package), fall back to the plain template so the
+            # campaign still runs.
+            writer_client = None
+            if ai_personalize:
+                try:
+                    from . import llm
+                    writer_client = llm.make_client()
+                except Exception as e:
+                    logger.warning('ИИ-персонализация выключена (%s) — обычный шаблон.', e)
+                    ai_personalize = False
+
+            logger.info('Рассылка запущена: ниша «%s», лидов %d%s%s',
+                        niche, len(leads), ' (dry-run)' if dry_run else '',
+                        ' · ИИ-персонализация' if ai_personalize else '')
 
             while not self._cancelled:
                 if not dry_run and not self._within_hours(opts):
@@ -136,12 +172,13 @@ class CampaignRunner:
                     break
 
                 self.current = msg['name']
-                text = self._render(message_template, name=msg['name'], link=link)
+                text = self._compose(msg, message_template, link,
+                                     ai_personalize, writer_client, opts.llm_model)
                 ok, err = self._send_one(gateway_url, msg['phone_wa'], text, dry_run)
 
                 with db.session() as conn:
                     db.set_message_status(conn, int(msg['msg_id']),
-                                          'sent' if ok else 'failed', err)
+                                          'sent' if ok else 'failed', err, text=text)
                 logger.info('  %s %s%s', '✓' if ok else '✗', msg['name'],
                             '' if ok else (' — ' + str(err)))
 

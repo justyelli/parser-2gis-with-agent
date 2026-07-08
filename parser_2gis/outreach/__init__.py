@@ -1,7 +1,7 @@
 """Lead-generation / outreach platform.
 
 Extends the 2GIS parser with: capturing "businesses without a website" as
-leads, generating a template site per niche (Claude API), deploying it to a
+leads, generating a template site per niche (GLM API), deploying it to a
 subdomain, and sending the link over WhatsApp (via a Node/Baileys gateway).
 """
 from __future__ import annotations

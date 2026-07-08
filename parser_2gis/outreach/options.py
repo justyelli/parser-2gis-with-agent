@@ -6,9 +6,10 @@ from pydantic import BaseModel, ConfigDict, Field
 class OutreachOptions(BaseModel):
     """Settings for the lead-generation / outreach platform.
 
-    Holds only non-secret configuration. Secrets (e.g. the Anthropic API key)
+    Holds only non-secret configuration. Secrets (e.g. the GLM API key)
     are read from the environment at runtime, never stored in the config file:
-        * ANTHROPIC_API_KEY - key for the site generator (Claude API).
+        * GLM_API_KEY - key for the site generator (GLM / Z.ai API).
+        * GLM_BASE_URL - optional override of the OpenAI-compatible endpoint.
 
     Attributes:
         enabled: Master switch for the outreach features in the dashboard.
@@ -18,7 +19,7 @@ class OutreachOptions(BaseModel):
         sites_dir: Directory Nginx serves subdomains from (root of "/var/www/sites"
             style layout). Each site lives in "<sites_dir>/<slug>/".
         use_https: Whether generated links use https (requires a wildcard cert).
-        anthropic_model: Claude model id used by the site generator.
+        llm_model: GLM model id used by the site generator.
         gateway_url: Base URL of the Node WhatsApp gateway (Baileys), e.g.
             "http://127.0.0.1:8667".
         send_daily_limit: Max WhatsApp messages to send per day (anti-ban).
@@ -33,7 +34,7 @@ class OutreachOptions(BaseModel):
     base_domain: str = ''
     sites_dir: str = '/var/www/sites'
     use_https: bool = True
-    anthropic_model: str = 'claude-opus-4-8'
+    llm_model: str = 'glm-5'
     gateway_url: str = 'http://127.0.0.1:8667'
     send_daily_limit: int = Field(40, ge=1, le=10000)
     send_delay_min: int = Field(40, ge=1)

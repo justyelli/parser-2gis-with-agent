@@ -15,7 +15,7 @@
 
 - **VPS** (Ubuntu 22.04+), 1–2 ГБ RAM.
 - **Домен** с возможностью поставить wildcard A-запись (`*.домен`).
-- **Ключ Anthropic** (Claude API) — [console.anthropic.com](https://console.anthropic.com).
+- **Ключ GLM** (Z.ai API) — [z.ai](https://z.ai) (или Zhipu: [bigmodel.cn](https://open.bigmodel.cn)).
 - **Отдельный номер WhatsApp** (лучше не личный — при массовых рассылках номер могут забанить).
 - Установленные на VPS: Python 3.10–3.13, Node.js 18+, Google Chrome (для парсера), Nginx.
 
@@ -29,7 +29,7 @@ cd parser-2gis-new
 
 # Python-часть (дашборд + парсер + генератор)
 pip install -e .
-pip install anthropic          # для ИИ-генерации сайтов
+pip install openai             # для ИИ-генерации сайтов (клиент к GLM)
 
 # Node-часть (WhatsApp-шлюз)
 cd whatsapp-gateway && npm install && cd ..
@@ -45,17 +45,19 @@ sudo apt install ./google-chrome-stable_current_amd64.deb
 
 ## 3. Переменные окружения
 
-Задайте перед запуском дашборда (например в `/etc/environment`, systemd-юните или `.env`):
+Проще всего — положить их в файл **`.env` в корне проекта** (он в `.gitignore`, дашборд читает его автоматически при старте). Реальные переменные окружения (shell / systemd) имеют приоритет над `.env`.
 
 | Переменная | Назначение | Пример |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | ключ Claude API (генерация сайтов) | `sk-ant-...` |
+| `GLM_API_KEY` | ключ GLM / Z.ai API (генерация сайтов) | `...` |
+| `GLM_BASE_URL` | OpenAI-совместимый эндпоинт GLM (необязательно) | `https://api.z.ai/api/paas/v4/` (по умолч.) или `https://open.bigmodel.cn/api/paas/v4/` |
 | `OUTREACH_BASE_DOMAIN` | ваш wildcard-домен | `mysites.kz` |
 | `OUTREACH_SITES_DIR` | куда Nginx отдаёт поддомены | `/var/www/sites` |
 | `WA_GATEWAY_URL` | адрес WhatsApp-шлюза | `http://127.0.0.1:8667` |
-| `OUTREACH_MODEL` | модель Claude (по умолчанию opus) | `claude-opus-4-8` или `claude-sonnet-5` (дешевле) |
+| `OUTREACH_MODEL` | модель GLM (по умолчанию glm-5) | `glm-5` или `glm-4.6` (дешевле) |
+| `OUTREACH_USE_HTTPS` | ссылки на сайты по https (нужен wildcard-SSL) | `false` (по умолч.) → `true` после `enable-ssl.sh` |
 
-> Секреты (ключ Anthropic) держите **только** в env, не в конфиге.
+> Секреты (ключ GLM) держите **только** в env, не в конфиге.
 
 ---
 
@@ -120,14 +122,14 @@ sudo nginx -t && sudo systemctl reload nginx
 Теперь любая папка `/var/www/sites/<slug>/` уже доступна на `<slug>.mysites.kz`. Деплой = просто копирование папки — платформа делает это сама.
 
 ### 5.4. Wildcard SSL (HTTPS для всех поддоменов)
-Один сертификат на `*.mysites.kz` через DNS-проверку:
+Из коробки ссылки идут по **http** (`OUTREACH_USE_HTTPS=false`) — они сразу открываются. Чтобы включить https на всех поддоменах, есть готовый скрипт:
 ```bash
-sudo apt install certbot python3-certbot-nginx
-sudo certbot certonly --manual --preferred-challenges dns \
-     -d "*.mysites.kz" -d "mysites.kz"
-# добавьте TXT-запись, которую попросит certbot, затем допишите ssl в конфиг Nginx
+sudo bash enable-ssl.sh            # домен возьмётся из .env
+# или: sudo bash enable-ssl.sh mysites.kz
 ```
-После выпуска сертификата добавьте в оба server-блока `listen 443 ssl;` и пути к сертификату `/etc/letsencrypt/live/mysites.kz/`.
+Он поставит certbot, выпустит один wildcard-сертификат на `*.домен` (попросит добавить **TXT-запись** в DNS — по подсказке certbot), пересоберёт Nginx на `listen 443 ssl` с редиректом с http, и переключит `OUTREACH_USE_HTTPS=true` в `.env` + перезапустит дашборд.
+
+> Wildcard-сертификат выпускается через ручную DNS-проверку, поэтому `certbot renew` его сам не продлит — перед истечением (90 дней) запустите `enable-ssl.sh` снова или настройте DNS-плагин certbot.
 
 ---
 
@@ -135,7 +137,7 @@ sudo certbot certonly --manual --preferred-challenges dns \
 
 1. **Ниша и город** — вводите, напр. «Стоматология» + «Алматы».
 2. **Найти бизнесы без сайта** — парсит 2ГИС, оставляет тех, у кого есть телефон, но нет сайта (лиды сохраняются в БД).
-3. **Создать сайт** — Claude генерит шаблонный сайт под нишу (нужен `ANTHROPIC_API_KEY`).
+3. **Создать сайт** — GLM генерит шаблонный сайт под нишу (нужен `GLM_API_KEY`).
 4. **Опубликовать** — сайт заливается на поддомен, вы получаете ссылку.
 5. **Подключить WhatsApp** — QR прямо в дашборде (номер подключается в любой момент).
 6. **Разослать** — ссылка уходит всем лидам с задержками. Есть «тестовый прогон» (dry-run) без реальной отправки.
@@ -175,10 +177,7 @@ Description=Outreach dashboard
 After=network.target
 [Service]
 WorkingDirectory=/opt/parser-2gis-new
-Environment=ANTHROPIC_API_KEY=sk-ant-...
-Environment=OUTREACH_BASE_DOMAIN=mysites.kz
-Environment=OUTREACH_SITES_DIR=/var/www/sites
-Environment=WA_GATEWAY_URL=http://127.0.0.1:8667
+EnvironmentFile=-/opt/parser-2gis-new/.env
 ExecStart=/usr/bin/python3 -c "from parser_2gis.web.server import create_app; create_app().run(host='127.0.0.1', port=8666)"
 Restart=always
 [Install]

@@ -10,3 +10,5 @@ build/
 .mypy_cache/
 .claude/
 *.pyc
+.env
+.env.local

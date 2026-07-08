@@ -106,6 +106,7 @@ if __name__ == '__main__':
             'requests>=2.13.0',
             'xlsxwriter>=3.0.5',
             'Flask>=2.2',
+            'openai>=1.0',
         ],
         extras_require={
             'dev': [
