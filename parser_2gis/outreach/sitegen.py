@@ -153,12 +153,23 @@ def render_html(content: dict[str, Any], *, niche: str, city: Optional[str],
         for a in advantages
     )
 
+    # Hero side card: top-3 real advantages as a trust panel + contact line.
+    hc_list = ''.join(f'<li>{esc(a)}</li>' for a in advantages[:3])
+    hc_list_html = f'<ul class="hc-list">{hc_list}</ul>' if hc_list else ''
+    hc_foot_parts = []
+    if phone_e:
+        hc_foot_parts.append(f'<a href="{tel_href}">{phone_e}</a>')
+    if city_e:
+        hc_foot_parts.append(f'<span>{city_e}</span>')
+    hc_foot_html = (f'<div class="hc-foot">{"".join(hc_foot_parts)}</div>'
+                    if hc_foot_parts else '')
+
     footer_meta = ' · '.join(x for x in (city_e, phone_e) if x)
     nav_phone = (f'<a class="nav-phone" href="{tel_href}">{phone_e}</a>'
                  if phone_e else '')
-    hero_call = (f'<a class="btn btn-ghost" href="{tel_href}">Позвонить</a>'
+    hero_call = (f'<a class="btn btn-outline" href="{tel_href}">Позвонить</a>'
                  if tel_href else '')
-    contact_call = (f'<a class="btn btn-line" href="{tel_href}">📞 {phone_e}</a>'
+    contact_call = (f'<a class="btn btn-glass" href="{tel_href}">{phone_e}</a>'
                     if phone_e else '')
 
     return f'''<!doctype html>
@@ -167,83 +178,122 @@ def render_html(content: dict[str, Any], *, niche: str, city: Optional[str],
 <title>{title}{where}</title>
 <meta name="description" content="{esc(content.get('hero_subtitle'))}">
 <style>
-  :root{{--c1:{c1};--c2:{c2};--ink:#0f172a;--muted:#5b6472;--line:#e8ebf2;--soft:#f7f8fc;--wa:#25D366}}
+  :root{{--c1:{c1};--c2:{c2};--ink:#121826;--body:#3c4658;--muted:#6a7488;
+        --line:#e6e9f1;--surface:#f5f6fb;--tint:{c1}14;--wa:#25D366}}
   *{{box-sizing:border-box;margin:0;padding:0}}
   html{{scroll-behavior:smooth}}
-  body{{font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink);
-       line-height:1.65;background:#fff;-webkit-font-smoothing:antialiased}}
-  .wrap{{max-width:1080px;margin:0 auto;padding:0 22px}}
+  body{{font-family:system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+       color:var(--body);line-height:1.65;background:#fff;-webkit-font-smoothing:antialiased}}
+  .wrap{{max-width:1120px;margin:0 auto;padding:0 24px}}
   a{{color:inherit}}
-  .btn{{display:inline-flex;align-items:center;gap:8px;font-weight:700;text-decoration:none;
-       padding:14px 26px;border-radius:12px;font-size:16px;transition:transform .15s,box-shadow .15s;cursor:pointer;border:0}}
+  h1,h2,h3{{color:var(--ink);text-wrap:balance}}
+  a:focus-visible,.btn:focus-visible{{outline:3px solid {c1}66;outline-offset:3px;border-radius:6px}}
+
+  .btn{{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:700;
+       text-decoration:none;padding:14px 26px;border-radius:12px;font-size:16px;border:0;cursor:pointer;
+       transition:transform .16s ease,box-shadow .16s ease,background .16s}}
   .btn:hover{{transform:translateY(-2px)}}
-  .btn-wa{{background:var(--wa);color:#fff;box-shadow:0 10px 26px rgba(37,211,102,.35)}}
-  .btn-ghost{{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.55);backdrop-filter:blur(4px)}}
-  .btn-line{{background:#fff;color:var(--ink);border:1px solid var(--line)}}
+  .btn-wa{{background:var(--wa);color:#fff;box-shadow:0 12px 28px rgba(37,211,102,.34)}}
+  .btn-outline{{background:transparent;color:var(--c1);border:1.5px solid {c1}55}}
+  .btn-outline:hover{{background:var(--tint)}}
+  .btn-glass{{background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.55)}}
   .btn-sm{{padding:10px 18px;font-size:14px;border-radius:10px}}
+  .cta-row{{display:flex;flex-wrap:wrap;gap:14px}}
 
-  .nav{{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.82);
+  .nav{{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.85);
        backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}}
-  .nav .wrap{{display:flex;align-items:center;justify-content:space-between;height:66px}}
-  .brand{{display:flex;align-items:center;gap:9px;font-weight:800;font-size:18px;letter-spacing:-.2px}}
-  .brand .dot{{width:12px;height:12px;border-radius:50%;background:linear-gradient(135deg,var(--c1),var(--c2))}}
-  .nav-r{{display:flex;align-items:center;gap:16px}}
-  .nav-phone{{text-decoration:none;font-weight:700;font-size:15px;white-space:nowrap}}
+  .nav .wrap{{display:flex;align-items:center;justify-content:space-between;height:68px}}
+  .brand{{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;
+         letter-spacing:-.3px;color:var(--ink)}}
+  .brand .dot{{width:12px;height:12px;border-radius:4px;transform:rotate(45deg);
+             background:linear-gradient(135deg,var(--c1),var(--c2))}}
+  .nav-r{{display:flex;align-items:center;gap:18px}}
+  .nav-phone{{text-decoration:none;font-weight:700;font-size:15px;color:var(--ink);white-space:nowrap}}
 
-  .hero{{position:relative;overflow:hidden;color:#fff;
-        background:linear-gradient(135deg,var(--c1),var(--c2));padding:104px 0 112px}}
-  .hero:before{{content:"";position:absolute;inset:0;
-              background:radial-gradient(900px 420px at 82% -8%,rgba(255,255,255,.28),transparent 60%)}}
-  .hero:after{{content:"";position:absolute;right:-120px;bottom:-160px;width:420px;height:420px;
-             border-radius:50%;background:rgba(255,255,255,.10)}}
-  .hero .wrap{{position:relative}}
-  .eyebrow{{display:inline-block;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);
-          padding:7px 15px;border-radius:100px;font-size:13px;font-weight:600;margin-bottom:20px}}
-  .hero h1{{font-size:clamp(32px,5.5vw,56px);font-weight:800;line-height:1.08;letter-spacing:-1px;max-width:820px}}
-  .hero .sub{{font-size:clamp(17px,2.2vw,21px);opacity:.94;margin-top:18px;max-width:620px}}
-  .cta-row{{display:flex;flex-wrap:wrap;gap:14px;margin-top:34px}}
-  @keyframes up{{from{{opacity:0;transform:translateY(16px)}}to{{opacity:1;transform:none}}}}
-  .hero .eyebrow,.hero h1,.hero .sub,.hero .cta-row{{animation:up .6s ease both}}
-  .hero h1{{animation-delay:.05s}} .hero .sub{{animation-delay:.12s}} .hero .cta-row{{animation-delay:.2s}}
+  .hero{{position:relative;overflow:hidden;padding:84px 0 88px;
+        background:radial-gradient(780px 400px at 94% -12%,{c1}22,transparent 62%),
+                   radial-gradient(640px 340px at -10% 128%,{c1}12,transparent 60%),#fff}}
+  .hero-grid{{display:grid;grid-template-columns:1.12fr .88fr;gap:52px;align-items:center}}
+  .h-eyebrow{{display:inline-flex;align-items:center;gap:10px;color:var(--c1);font-weight:700;
+            font-size:13px;letter-spacing:1.6px;text-transform:uppercase;margin-bottom:20px}}
+  .h-eyebrow:before{{content:"";width:28px;height:2px;background:var(--c1)}}
+  .hero h1{{font-size:clamp(34px,5.2vw,58px);font-weight:800;line-height:1.05;
+          letter-spacing:-.03em;max-width:15ch}}
+  .hero .sub{{font-size:clamp(17px,1.9vw,20px);color:var(--body);margin:20px 0 32px;max-width:46ch}}
 
-  section{{padding:72px 0}}
-  .sec-eyebrow{{color:var(--c1);font-weight:700;font-size:13px;letter-spacing:1.4px;text-transform:uppercase}}
-  h2{{font-size:clamp(26px,3.4vw,36px);font-weight:800;letter-spacing:-.6px;margin:8px 0 10px}}
-  .lead{{color:var(--muted);font-size:17px;max-width:680px;margin-bottom:34px}}
-  .about{{background:var(--soft)}}
-  .about p{{font-size:19px;color:#334155;max-width:760px}}
+  .hcard{{position:relative;overflow:hidden;color:#fff;border-radius:22px;padding:32px 30px;
+         background:linear-gradient(150deg,var(--c1),var(--c2));box-shadow:0 26px 60px {c1}3a}}
+  .hcard:before{{content:"";position:absolute;right:-70px;top:-70px;width:220px;height:220px;
+               border-radius:50%;background:rgba(255,255,255,.14)}}
+  .hcard>*{{position:relative}}
+  .hc-h{{font-weight:800;font-size:18px;letter-spacing:-.2px;margin-bottom:18px}}
+  .hc-list{{list-style:none;display:grid;gap:13px}}
+  .hc-list li{{position:relative;padding-left:32px;font-weight:500;font-size:15px;line-height:1.45}}
+  .hc-list li:before{{content:"✓";position:absolute;left:0;top:1px;width:21px;height:21px;
+                    border-radius:7px;background:rgba(255,255,255,.22);display:grid;
+                    place-items:center;font-size:12px;font-weight:800}}
+  .hc-foot{{margin-top:24px;padding-top:18px;border-top:1px solid rgba(255,255,255,.28);
+          display:flex;flex-direction:column;gap:3px}}
+  .hc-foot a{{font-weight:800;font-size:19px;text-decoration:none;letter-spacing:-.2px}}
+  .hc-foot span{{opacity:.85;font-size:14px}}
 
-  .grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px}}
-  .card{{position:relative;border:1px solid var(--line);border-radius:18px;padding:28px 24px;background:#fff;
-        transition:transform .18s,box-shadow .18s;overflow:hidden}}
-  .card:before{{content:"";position:absolute;left:0;top:0;height:3px;width:100%;
-              background:linear-gradient(90deg,var(--c1),var(--c2))}}
-  .card:hover{{transform:translateY(-4px);box-shadow:0 18px 40px rgba(15,23,42,.10)}}
-  .card h3{{font-size:19px;font-weight:700;margin-bottom:8px}}
-  .card p{{color:var(--muted);font-size:15px}}
+  @keyframes up{{from{{opacity:0;transform:translateY(18px)}}to{{opacity:1;transform:none}}}}
+  .hero-text>*{{animation:up .6s ease both}}
+  .hero-text>*:nth-child(2){{animation-delay:.06s}}
+  .hero-text>*:nth-child(3){{animation-delay:.12s}}
+  .hero-text>*:nth-child(4){{animation-delay:.18s}}
+  .hcard{{animation:up .7s ease .12s both}}
 
-  .adv-grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}}
-  .adv{{display:flex;gap:14px;align-items:flex-start;background:var(--soft);
-       border:1px solid var(--line);border-radius:14px;padding:18px 20px;font-weight:500}}
-  .adv-ic{{flex:0 0 26px;height:26px;border-radius:50%;display:grid;place-items:center;
-         background:linear-gradient(135deg,var(--c1),var(--c2));color:#fff;font-size:14px;font-weight:800}}
+  section{{padding:78px 0}}
+  .eyebrow2{{color:var(--c1);font-weight:700;font-size:13px;letter-spacing:1.6px;text-transform:uppercase}}
+  h2{{font-size:clamp(27px,3.2vw,38px);font-weight:800;letter-spacing:-.025em;
+     line-height:1.12;margin:11px 0 12px}}
+  .lead{{color:var(--muted);font-size:17px;max-width:60ch;margin-bottom:40px}}
+
+  .about-grid{{display:grid;grid-template-columns:.85fr 1.15fr;gap:48px;align-items:start}}
+  .about-grid .head h2{{margin-top:0}}
+  .about-grid p{{font-size:19px;line-height:1.72;color:var(--body)}}
+
+  .grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px}}
+  .card{{border:1px solid var(--line);border-radius:16px;padding:28px 26px;background:#fff;
+        transition:transform .18s ease,box-shadow .18s ease,border-color .18s}}
+  .card:hover{{transform:translateY(-5px);box-shadow:0 20px 46px rgba(18,24,38,.09);border-color:transparent}}
+  .card h3{{font-size:18px;font-weight:700;letter-spacing:-.01em}}
+  .card h3:after{{content:"";display:block;width:30px;height:3px;border-radius:2px;margin:13px 0 3px;
+                background:linear-gradient(90deg,var(--c1),var(--c2))}}
+  .card p{{color:var(--muted);font-size:15px;margin-top:10px}}
+
+  .why{{background:var(--surface)}}
+  .adv-grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));
+           gap:2px 34px;margin-top:6px}}
+  .adv{{display:flex;gap:15px;align-items:center;padding:18px 2px;
+       border-bottom:1px solid var(--line);font-weight:600;color:var(--ink);font-size:16px}}
+  .adv-ic{{flex:0 0 32px;height:32px;border-radius:9px;display:grid;place-items:center;
+         background:var(--tint);color:var(--c1);font-size:15px;font-weight:800}}
 
   .cta{{position:relative;overflow:hidden;text-align:center;color:#fff;
-       background:linear-gradient(135deg,var(--c1),var(--c2))}}
-  .cta:after{{content:"";position:absolute;left:-120px;top:-120px;width:360px;height:360px;
-            border-radius:50%;background:rgba(255,255,255,.10)}}
+       background:linear-gradient(150deg,var(--c1),var(--c2))}}
+  .cta:before{{content:"";position:absolute;left:-140px;top:-120px;width:360px;height:360px;
+             border-radius:50%;background:rgba(255,255,255,.10)}}
+  .cta:after{{content:"";position:absolute;right:-120px;bottom:-160px;width:360px;height:360px;
+            border-radius:50%;background:rgba(255,255,255,.08)}}
   .cta .wrap{{position:relative}}
   .cta h2{{color:#fff}}
-  .cta p{{opacity:.92;font-size:17px;max-width:560px;margin:12px auto 30px}}
+  .cta p{{opacity:.94;font-size:18px;max-width:52ch;margin:14px auto 32px}}
   .cta-row.center{{justify-content:center}}
 
-  footer{{background:#0b1120;color:#93a0b4;padding:40px 0;text-align:center;font-size:14px}}
-  footer .fb{{color:#fff;font-weight:800;font-size:18px;margin-bottom:6px}}
-  footer a{{color:#cbd5e1;text-decoration:none}}
-  @media(max-width:640px){{
-    section{{padding:52px 0}} .hero{{padding:80px 0 84px}}
-    .nav-phone{{display:none}} .cta-row .btn{{flex:1 1 100%;justify-content:center}}
+  footer{{background:var(--ink);color:#9aa4b6;padding:44px 0;text-align:center;font-size:14px}}
+  footer .fb{{color:#fff;font-weight:800;font-size:19px;letter-spacing:-.3px;margin-bottom:6px}}
+
+  @media(max-width:860px){{
+    .hero-grid,.about-grid{{grid-template-columns:1fr;gap:34px}}
+    .hero{{padding:64px 0 68px}}
   }}
+  @media(max-width:640px){{
+    section{{padding:56px 0}} .nav-phone{{display:none}}
+    .cta-row .btn{{flex:1 1 100%}} .adv-grid{{gap:0 20px}}
+  }}
+  @media(prefers-reduced-motion:reduce){{*{{animation:none!important;transition:none!important}}}}
 </style></head><body>
 
 <nav class="nav"><div class="wrap">
@@ -253,32 +303,41 @@ def render_html(content: dict[str, Any], *, niche: str, city: Optional[str],
   </div>
 </div></nav>
 
-<header class="hero"><div class="wrap">
-  <span class="eyebrow">{eyebrow}</span>
-  <h1>{esc(content.get('hero_title'))}</h1>
-  <p class="sub">{esc(content.get('hero_subtitle'))}</p>
-  <div class="cta-row">
-    <a class="btn btn-wa" href="{wa_href}">Написать в WhatsApp</a>
-    {hero_call}
+<header class="hero"><div class="wrap hero-grid">
+  <div class="hero-text">
+    <span class="h-eyebrow">{eyebrow}</span>
+    <h1>{esc(content.get('hero_title'))}</h1>
+    <p class="sub">{esc(content.get('hero_subtitle'))}</p>
+    <div class="cta-row">
+      <a class="btn btn-wa" href="{wa_href}">Написать в WhatsApp</a>
+      {hero_call}
+    </div>
   </div>
+  <aside class="hcard">
+    <div class="hc-h">Почему выбирают нас</div>
+    {hc_list_html}
+    {hc_foot_html}
+  </aside>
 </div></header>
 
-<section class="about"><div class="wrap">
-  <div class="sec-eyebrow">О нас</div>
-  <h2>Коротко о главном</h2>
+<section class="about"><div class="wrap about-grid">
+  <div class="head">
+    <div class="eyebrow2">О нас</div>
+    <h2>Коротко о главном</h2>
+  </div>
   <p>{esc(content.get('about'))}</p>
 </div></section>
 
 <section><div class="wrap">
-  <div class="sec-eyebrow">Услуги</div>
+  <div class="eyebrow2">Услуги</div>
   <h2>Что мы предлагаем</h2>
   <p class="lead">Полный спектр услуг под ваши задачи — с понятным результатом.</p>
   <div class="grid">{services_html}</div>
 </div></section>
 
-<section style="background:var(--soft)"><div class="wrap">
-  <div class="sec-eyebrow">Почему мы</div>
-  <h2>Почему выбирают нас</h2>
+<section class="why"><div class="wrap">
+  <div class="eyebrow2">Почему мы</div>
+  <h2>Причины обратиться именно к нам</h2>
   <div class="adv-grid">{adv_html}</div>
 </div></section>
 
