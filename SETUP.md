@@ -56,6 +56,7 @@ sudo apt install ./google-chrome-stable_current_amd64.deb
 | `WA_GATEWAY_URL` | адрес WhatsApp-шлюза | `http://127.0.0.1:8667` |
 | `OUTREACH_MODEL` | модель GLM (по умолчанию glm-5) | `glm-5` или `glm-4.6` (дешевле) |
 | `OUTREACH_USE_HTTPS` | ссылки на сайты по https (нужен wildcard-SSL) | `false` (по умолч.) → `true` после `enable-ssl.sh` |
+| `PANEL_USER` / `PANEL_PASSWORD` | логин/пароль входа в панель (пусто = без пароля) | `admin` / `ваш_пароль` |
 
 > Секреты (ключ GLM) держите **только** в env, не в конфиге.
 

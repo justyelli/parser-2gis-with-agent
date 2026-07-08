@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hmac
 import json
 import os
 import tempfile
@@ -126,11 +127,50 @@ def _build_config(data: dict[str, Any]) -> Configuration:
     return config
 
 
+def _login_page(error: str = '') -> str:
+    """Minimal self-contained login page for the dashboard."""
+    err_html = f'<div class="err">{error}</div>' if error else ''
+    return f'''<!doctype html>
+<html lang="ru"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Вход — Parser 2GIS</title>
+<style>
+  *{{box-sizing:border-box;margin:0;padding:0}}
+  body{{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;min-height:100vh;
+       display:flex;align-items:center;justify-content:center;
+       background:linear-gradient(135deg,#4f46e5,#7c3aed);padding:20px}}
+  .card{{background:#fff;border-radius:16px;padding:34px 30px;width:100%;max-width:360px;
+        box-shadow:0 20px 50px rgba(0,0,0,.25)}}
+  h1{{font-size:22px;color:#1a2233;margin-bottom:4px}}
+  p.sub{{color:#5b6577;font-size:14px;margin-bottom:22px}}
+  label{{display:block;font-size:13px;color:#5b6577;margin:12px 0 6px}}
+  input{{width:100%;padding:12px 14px;border:1px solid #e6e8ef;border-radius:10px;font-size:15px}}
+  input:focus{{outline:none;border-color:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,.15)}}
+  button{{width:100%;margin-top:22px;background:#4f46e5;color:#fff;border:none;border-radius:10px;
+         padding:13px;font-size:15px;font-weight:700;cursor:pointer}}
+  button:hover{{filter:brightness(.95)}}
+  .err{{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;border-radius:10px;
+       padding:10px 12px;font-size:14px;margin-bottom:16px}}
+</style></head><body>
+<form class="card" method="post" action="/login">
+  <h1>🚀 Панель рассылки</h1>
+  <p class="sub">Введите логин и пароль для входа</p>
+  {err_html}
+  <label>Логин</label>
+  <input name="user" autocomplete="username" autofocus>
+  <label>Пароль</label>
+  <input name="password" type="password" autocomplete="current-password">
+  <button type="submit">Войти</button>
+</form>
+</body></html>'''
+
+
 def create_app():
     """Create the Flask app for the dashboard. Requires the `web` extra."""
     _load_dotenv()
     try:
-        from flask import Flask, jsonify, request, send_file, send_from_directory
+        from flask import (Flask, Response, jsonify, redirect, request,
+                           send_file, send_from_directory, session)
     except ImportError as e:  # pragma: no cover
         raise ImportError(
             'Для веб-интерфейса нужен Flask. Установите: pip install "parser-2gis[web]"'
@@ -141,6 +181,45 @@ def create_app():
     job = ParseJob()
     history = History()
     campaign = CampaignRunner()
+
+    # ---- Access control (optional login) --------------------------------
+    # Enabled only when PANEL_PASSWORD is set, so local/dev use isn't broken.
+    # Protects the whole dashboard incl. all /api/* (parser, WhatsApp send…);
+    # generated client sites live on their own subdomains and stay public.
+    panel_user = os.getenv('PANEL_USER', 'admin')
+    panel_password = os.getenv('PANEL_PASSWORD', '')
+    auth_on = bool(panel_password)
+    app.secret_key = os.getenv('PANEL_SECRET_KEY') or os.urandom(32)
+    app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Lax')
+    if not auth_on:
+        logger.warning('PANEL_PASSWORD не задан — панель открыта без пароля.')
+
+    @app.before_request
+    def _require_login():
+        if not auth_on or request.path == '/login' or session.get('auth'):
+            return None
+        if request.path.startswith('/api/'):
+            return jsonify({'ok': False, 'error': 'Требуется вход'}), 401
+        return redirect('/login')
+
+    @app.route('/login', methods=['GET', 'POST'])
+    def login():
+        if not auth_on:
+            return redirect('/')
+        error = ''
+        if request.method == 'POST':
+            ok = (hmac.compare_digest(request.form.get('user', ''), panel_user)
+                  and hmac.compare_digest(request.form.get('password', ''), panel_password))
+            if ok:
+                session['auth'] = True
+                return redirect('/')
+            error = 'Неверный логин или пароль'
+        return Response(_login_page(error), mimetype='text/html')
+
+    @app.route('/logout')
+    def logout():
+        session.clear()
+        return redirect('/login')
 
     def _export_send(docs, writer_opts: WriterOptions, fmt: str):
         """Write `docs` to a temp file in `fmt` and send it as a download."""

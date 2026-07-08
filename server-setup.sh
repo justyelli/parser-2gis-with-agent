@@ -84,7 +84,11 @@ if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q "Status: a
 fi
 
 echo "==> [8/8] Env-файл + systemd-сервисы"
+# Случайный пароль панели по умолчанию (панель закрыта сразу после установки).
+PANEL_PASS="$(openssl rand -hex 8 2>/dev/null)"; [ -z "$PANEL_PASS" ] && PANEL_PASS="parser$(date +%s)"
+ENV_CREATED=0
 if [ ! -f "$ENV_FILE" ]; then
+ENV_CREATED=1
 cat > "$ENV_FILE" <<ENV
 GLM_API_KEY=ВСТАВЬ_КЛЮЧ_СЮДА
 # Необязательно: свой OpenAI-совместимый эндпоинт GLM
@@ -97,6 +101,9 @@ OUTREACH_MODEL=glm-5
 # http — из коробки (Nginx на 80). enable-ssl.sh выпустит wildcard-SSL
 # и переключит это в true.
 OUTREACH_USE_HTTPS=false
+# Вход в панель. Пусто = без пароля. Смени PANEL_PASSWORD на свой.
+PANEL_USER=admin
+PANEL_PASSWORD=${PANEL_PASS}
 ENV
 chmod 600 "$ENV_FILE"
 chown "$RUN_USER" "$ENV_FILE" 2>/dev/null || true
@@ -149,6 +156,11 @@ echo "      systemctl restart outreach-dashboard"
 echo
 echo " 3) Открой панель:  http://panel.${DOMAIN}   (после того как DNS обновится)"
 echo "      Шаг 5 покажет QR — отсканируй телефоном."
+if [ "$ENV_CREATED" = "1" ]; then
+echo
+echo " Вход в панель:  логин admin  /  пароль:  ${PANEL_PASS}"
+echo "   (сменить: PANEL_PASSWORD в ${ENV_FILE} → systemctl restart outreach-dashboard)"
+fi
 echo
 echo " Логи:   journalctl -u outreach-dashboard -f"
 echo "         journalctl -u wa-gateway -f"
