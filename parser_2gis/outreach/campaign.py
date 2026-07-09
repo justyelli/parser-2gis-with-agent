@@ -11,6 +11,7 @@ import requests
 from ..logger import logger
 from . import db
 from .options import OutreachOptions
+from .sitegen import client_slugs, slugify
 
 
 class CampaignRunner:
@@ -152,6 +153,15 @@ class CampaignRunner:
                         niche, len(leads), ' (dry-run)' if dry_run else '',
                         ' · ИИ-персонализация' if ai_personalize else '')
 
+            # Per-client personal page URL: <niche>.<domain>/<client-slug>.
+            scheme = 'https' if opts.use_https else 'http'
+            niche_slug = slugify(niche + ('-' + city if city else ''))
+            slug_by_lead_id = {
+                int(lead['id']): client_slug
+                for lead, client_slug in client_slugs(leads)
+                if lead.get('id') is not None
+            }
+
             while not self._cancelled:
                 if not dry_run and not self._within_hours(opts):
                     self.status = 'paused'
@@ -172,7 +182,17 @@ class CampaignRunner:
                     break
 
                 self.current = msg['name']
-                text = self._compose(msg, message_template, link,
+                # Personal link per client: public domain when configured,
+                # otherwise append the client path to the form's base link.
+                client_slug = slug_by_lead_id.get(int(msg['lead_id']),
+                                                  slugify(msg['name']))
+                if opts.base_domain:
+                    per_link = f'{scheme}://{niche_slug}.{opts.base_domain}/{client_slug}'
+                elif link:
+                    per_link = link.rstrip('/') + '/' + client_slug
+                else:
+                    per_link = None
+                text = self._compose(msg, message_template, per_link,
                                      ai_personalize, writer_client, opts.llm_model)
                 ok, err = self._send_one(gateway_url, msg['phone_wa'], text, dry_run)
 

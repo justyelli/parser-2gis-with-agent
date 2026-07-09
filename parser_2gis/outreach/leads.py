@@ -52,6 +52,7 @@ def capture_leads(docs: list[Any], *, niche: str, city_hint: Optional[str] = Non
                 address=record.get('address'),
                 has_whatsapp='whatsapp' in contacts,
                 source_url=record.get('url'),
+                logo_url=record.get('logo_url'),
             )
             processed += 1
         inserted = _count(conn, niche) - before

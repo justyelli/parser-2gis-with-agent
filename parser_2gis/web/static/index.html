@@ -551,7 +551,7 @@
       wz_niche_ph:'Ниша: Стоматология, Кафе…', wz_city_ph:'Қала: Алматы…',
       wz_s2:'Сайтсыз бизнестерді табу', wz_s2d:'2ГИС-тен телефоны бар, бірақ сайты жоқ бизнестерді жинаймыз.',
       wz_s3:'Ниша үшін сайт жасау', wz_s3d:'ИИ осы ниша үшін әдемі үлгі-сайт жазады. Бір сайт — бүкіл нишаға.', wz_s3btn:'✨ Сайт жасау',
-      wz_s3view:'Қарау →', wz_s3again:'✨ Қайта жасау', wz_site_building:'Жасалуда…', wz_site_local:'Дайын (алдын ала қарау)',
+      wz_s3view:'Қарау →', wz_s3again:'✨ Қайта жасау', wz_site_building:'Жасалуда…', wz_site_local:'Дайын (алдын ала қарау)', wz_site_pages:'жеке бет',
       wz_s4:'Жариялау → сілтеме алу', wz_s4d:'Сайтты поддоменге жүктейміз және дайын сілтеме береміз.', wz_s4btn:'Жариялау',
       wz_s4again:'Қайта жариялау', wz_pub_ing:'Жариялануда…', wz_pub_nodomain:'Жарияланды (домен бапталмаған)',
       wz_s5:'WhatsApp қосу', wz_s5d:'QR-кодты бір рет сканерлеңіз — нөмір таратуға дайын. Кез келген уақытта қосуға болады.', wz_s5btn:'WhatsApp қосу',
@@ -599,7 +599,7 @@
       wz_niche_ph:'Ниша: Стоматология, Кафе…', wz_city_ph:'Город: Алматы…',
       wz_s2:'Найдите бизнесы без сайта', wz_s2d:'Парсим 2ГИС и оставляем тех, у кого есть телефон, но нет сайта.',
       wz_s3:'Создайте сайт для ниши', wz_s3d:'ИИ напишет красивый шаблонный сайт под нишу. Один сайт — на всю нишу.', wz_s3btn:'✨ Создать сайт',
-      wz_s3view:'Открыть →', wz_s3again:'✨ Создать заново', wz_site_building:'Генерируется…', wz_site_local:'Готово (предпросмотр)',
+      wz_s3view:'Открыть →', wz_s3again:'✨ Создать заново', wz_site_building:'Генерируется…', wz_site_local:'Готово (предпросмотр)', wz_site_pages:'персональных страниц',
       wz_s4:'Опубликуйте → получите ссылку', wz_s4d:'Зальём сайт на поддомен и дадим готовую ссылку.', wz_s4btn:'Опубликовать',
       wz_s4again:'Опубликовать заново', wz_pub_ing:'Публикуется…', wz_pub_nodomain:'Опубликовано (домен не настроен)',
       wz_s5:'Подключите WhatsApp', wz_s5d:'Отсканируйте QR-код один раз — номер готов к рассылке. Подключить можно в любой момент.', wz_s5btn:'Подключить WhatsApp',
@@ -1327,7 +1327,7 @@
         wzSiteSlug=d.slug; wzPublished=false;   // fresh build → not yet published
         $('wzSiteView').href=d.preview_url;
         if($('wzLink'))$('wzLink').value=wzSiteUrl;   // autofill step 6 link
-        info.textContent=d.url?('🔗 '+d.url):t('wz_site_local');
+        info.textContent=(d.url?('🔗 '+d.url):t('wz_site_local'))+(d.count?(' · '+d.count+' '+t('wz_site_pages')):'');
         wzSiteRender();
       }).catch(function(e){ $('wzSiteBtn').disabled=false; info.textContent=t('a_server')+e; });
   });

@@ -9,7 +9,7 @@ from typing import Any, Iterator, Optional
 from ..paths import user_path
 
 # Schema version bumped when the DDL below changes in a breaking way.
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS leads (
@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS leads (
     address      TEXT,
     has_whatsapp INTEGER NOT NULL DEFAULT 0,
     source_url   TEXT,
+    logo_url     TEXT,                        -- business photo/avatar from 2GIS
     created_at   TEXT NOT NULL,
     UNIQUE(phone_wa, niche)
 );
@@ -98,6 +99,9 @@ def _migrate(conn: sqlite3.Connection) -> None:
     cols = {r['name'] for r in conn.execute('PRAGMA table_info(messages)')}
     if 'text' not in cols:  # v1 -> v2: store the exact sent message
         conn.execute('ALTER TABLE messages ADD COLUMN text TEXT')
+    lead_cols = {r['name'] for r in conn.execute('PRAGMA table_info(leads)')}
+    if 'logo_url' not in lead_cols:  # v2 -> v3: store the 2GIS logo/avatar
+        conn.execute('ALTER TABLE leads ADD COLUMN logo_url TEXT')
 
 
 @contextmanager
@@ -116,7 +120,8 @@ def session(db_path: Optional[Path] = None) -> Iterator[sqlite3.Connection]:
 def upsert_lead(conn: sqlite3.Connection, *, name: str, phone: Optional[str],
                 phone_wa: Optional[str], city: Optional[str], niche: Optional[str],
                 rubric: Optional[str] = None, address: Optional[str] = None,
-                has_whatsapp: bool = False, source_url: Optional[str] = None) -> int:
+                has_whatsapp: bool = False, source_url: Optional[str] = None,
+                logo_url: Optional[str] = None) -> int:
     """Insert a lead, ignoring duplicates on (phone_wa, niche).
 
     Returns the lead id (existing row's id on conflict).
@@ -124,20 +129,28 @@ def upsert_lead(conn: sqlite3.Connection, *, name: str, phone: Optional[str],
     cur = conn.execute(
         """
         INSERT INTO leads (name, phone, phone_wa, city, niche, rubric, address,
-                           has_whatsapp, source_url, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(phone_wa, niche) DO NOTHING
+                           has_whatsapp, source_url, logo_url, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(phone_wa, niche) DO UPDATE SET
+            name=excluded.name,
+            phone=COALESCE(excluded.phone, leads.phone),
+            city=COALESCE(excluded.city, leads.city),
+            rubric=COALESCE(excluded.rubric, leads.rubric),
+            address=COALESCE(excluded.address, leads.address),
+            has_whatsapp=MAX(leads.has_whatsapp, excluded.has_whatsapp),
+            source_url=COALESCE(excluded.source_url, leads.source_url),
+            logo_url=COALESCE(excluded.logo_url, leads.logo_url)
         """,
         (name, phone, phone_wa, city, niche, rubric, address,
-         int(has_whatsapp), source_url, _now()),
+         int(has_whatsapp), source_url, logo_url, _now()),
     )
-    if cur.lastrowid and cur.rowcount:
-        return cur.lastrowid
     row = conn.execute(
         'SELECT id FROM leads WHERE phone_wa IS ? AND niche IS ?',
         (phone_wa, niche),
     ).fetchone()
-    return int(row['id']) if row else 0
+    if row:
+        return int(row['id'])
+    return int(cur.lastrowid) if cur.lastrowid else 0
 
 
 def leads_for_niche(conn: sqlite3.Connection, niche: str,

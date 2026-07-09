@@ -5,6 +5,8 @@ import re
 from pathlib import Path
 from typing import Any, Optional
 
+import requests
+
 from ..logger import logger
 from ..paths import user_path
 from . import llm
@@ -81,6 +83,31 @@ def slugify(text: str) -> str:
     return slug or 'site'
 
 
+def client_slugs(leads: list[dict[str, Any]]) -> list[tuple[dict[str, Any], str]]:
+    """Return stable, unique public path slugs for a batch of leads.
+
+    The first lead keeps the clean business slug (``avenia``). Later leads that
+    normalize to the same value get an id/order suffix, so every broadcast link
+    points at a different page.
+    """
+    used: set[str] = set()
+    out: list[tuple[dict[str, Any], str]] = []
+    for index, lead in enumerate(leads, start=1):
+        base = slugify(str(lead.get('name') or f'client-{index}'))
+        candidate = base
+        if candidate in used:
+            raw_id = lead.get('id') or lead.get('lead_id') or index
+            suffix = slugify(str(raw_id))
+            candidate = f'{base}-{suffix}' if suffix else f'{base}-{index}'
+            counter = 2
+            while candidate in used:
+                candidate = f'{base}-{suffix or index}-{counter}'
+                counter += 1
+        used.add(candidate)
+        out.append((lead, candidate))
+    return out
+
+
 def local_sites_dir() -> Path:
     """Where generated sites are written locally (for preview before deploy)."""
     return user_path(is_config=False) / 'sites'
@@ -122,14 +149,32 @@ _PALETTES = [
 ]
 
 
+def _initials(name: str) -> str:
+    """Monogram from a business name: first letters of up to two words."""
+    words = [w for w in re.split(r'[\s·—-]+', (name or '').strip()) if w]
+    if not words:
+        return '•'
+    if len(words) == 1:
+        return words[0][:2].upper()
+    return (words[0][0] + words[1][0]).upper()
+
+
 def render_html(content: dict[str, Any], *, niche: str, city: Optional[str],
-                phone: Optional[str] = None) -> str:
-    """Render a self-contained, responsive, modern site from the generated copy."""
+                phone: Optional[str] = None, brand: Optional[str] = None,
+                logo_src: Optional[str] = None) -> str:
+    """Render a self-contained, responsive, modern site from the generated copy.
+
+    `brand`/`phone`/`logo_src` personalize the header, CTAs and footer for one
+    client; the body copy (hero, about, services, advantages) stays shared for
+    the niche. `logo_src` is a path relative to the page (e.g. "logo.jpg"); when
+    absent a monogram of `brand` is shown.
+    """
     def esc(s: Any) -> str:
         return (str(s) if s is not None else '').replace('&', '&amp;').replace(
             '<', '&lt;').replace('>', '&gt;').replace('"', '&quot;')
 
-    title = esc(content.get('business_type') or niche)
+    biz = esc(content.get('business_type') or niche)           # category label
+    brand_e = esc(brand) if brand else biz                     # client name
     where = f' · {esc(city)}' if city else ''
     city_e = esc(city) if city else ''
     services = content.get('services') or []
@@ -142,7 +187,9 @@ def render_html(content: dict[str, Any], *, niche: str, city: Optional[str],
 
     c1, c2 = _PALETTES[sum(ord(ch) for ch in (niche or 'x')) % len(_PALETTES)]
 
-    eyebrow = f'{title}{where}'
+    logo_html = (f'<img class="logo" src="{esc(logo_src)}" alt="{brand_e}">'
+                 if logo_src else f'<span class="logo mono">{esc(_initials(brand or biz))}</span>')
+    eyebrow = f'{biz}{where}'
     services_html = ''.join(
         f'<article class="card"><h3>{esc(s.get("title"))}</h3>'
         f'<p>{esc(s.get("description"))}</p></article>'
@@ -175,7 +222,7 @@ def render_html(content: dict[str, Any], *, niche: str, city: Optional[str],
     return f'''<!doctype html>
 <html lang="ru"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{title}{where}</title>
+<title>{brand_e}{where}</title>
 <meta name="description" content="{esc(content.get('hero_subtitle'))}">
 <style>
   :root{{--c1:{c1};--c2:{c2};--ink:#121826;--body:#3c4658;--muted:#6a7488;
@@ -203,10 +250,12 @@ def render_html(content: dict[str, Any], *, niche: str, city: Optional[str],
   .nav{{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.85);
        backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}}
   .nav .wrap{{display:flex;align-items:center;justify-content:space-between;height:68px}}
-  .brand{{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;
+  .brand{{display:flex;align-items:center;gap:12px;font-weight:800;font-size:18px;
          letter-spacing:-.3px;color:var(--ink)}}
-  .brand .dot{{width:12px;height:12px;border-radius:4px;transform:rotate(45deg);
-             background:linear-gradient(135deg,var(--c1),var(--c2))}}
+  .logo{{width:40px;height:40px;border-radius:11px;object-fit:cover;flex:0 0 40px;
+        background:var(--surface);border:1px solid var(--line)}}
+  .logo.mono{{display:grid;place-items:center;color:#fff;font-weight:800;font-size:15px;border:0;
+            background:linear-gradient(135deg,var(--c1),var(--c2))}}
   .nav-r{{display:flex;align-items:center;gap:18px}}
   .nav-phone{{text-decoration:none;font-weight:700;font-size:15px;color:var(--ink);white-space:nowrap}}
 
@@ -297,7 +346,7 @@ def render_html(content: dict[str, Any], *, niche: str, city: Optional[str],
 </style></head><body>
 
 <nav class="nav"><div class="wrap">
-  <div class="brand"><span class="dot"></span>{title}</div>
+  <div class="brand">{logo_html}<span>{brand_e}</span></div>
   <div class="nav-r">{nav_phone}
     <a class="btn btn-wa btn-sm" href="{wa_href}">WhatsApp</a>
   </div>
@@ -351,28 +400,77 @@ def render_html(content: dict[str, Any], *, niche: str, city: Optional[str],
 </div></section>
 
 <footer>
-  <div class="fb">{title}</div>
+  <div class="fb">{brand_e}</div>
   <div>{footer_meta}</div>
 </footer>
 </body></html>'''
 
 
-def build_site(niche: str, city: Optional[str], *, model: str,
-               phone: Optional[str] = None, out_root: Optional[Path] = None) -> dict[str, Any]:
-    """Generate copy, render the page, and write it to <out_root>/<slug>/index.html.
+def _save_logo(url: Optional[str], dest_dir: Path) -> Optional[str]:
+    """Download a client's 2GIS photo into <dest_dir>/logo.<ext>.
 
-    Returns {'slug', 'dir', 'index_path'}. Does not deploy (that's the deploy step).
+    Saving it locally avoids hotlinking issues (referer checks, expiry) on the
+    generated site. Returns the relative filename, or None if there's no URL or
+    the fetch fails (caller then falls back to a monogram).
+    """
+    if not url:
+        return None
+    try:
+        r = requests.get(url, timeout=6)
+        if r.status_code == 200 and r.content:
+            ct = (r.headers.get('content-type') or '').lower()
+            ext = ('png' if 'png' in ct else 'svg' if 'svg' in ct
+                   else 'webp' if 'webp' in ct else 'jpg')
+            (dest_dir / f'logo.{ext}').write_bytes(r.content)
+            return f'logo.{ext}'
+    except Exception as e:
+        logger.info('Лого не скачалось (%s): %s', url, e)
+    return None
+
+
+def build_site(niche: str, city: Optional[str], *, model: str,
+               leads: Optional[list[dict[str, Any]]] = None,
+               phone: Optional[str] = None,
+               out_root: Optional[Path] = None) -> dict[str, Any]:
+    """Generate niche copy once, then render a personalized page per client.
+
+    Writes:
+      <root>/<niche_slug>/index.html                 — generic niche page
+      <root>/<niche_slug>/<client_slug>/index.html   — one per lead in `leads`
+
+    Each client page shows that client's name, phone and 2GIS logo (or a
+    monogram); the body copy stays shared for the niche. Lead dicts use keys
+    name / phone / phone_wa / city / logo_url. With `leads=None` only the
+    generic page is built (backward compatible), using `phone`.
+
+    Returns {'slug' (niche), 'dir', 'index_path', 'count', 'clients'} where
+    `clients` is [{'slug','name'}]. Does not deploy (that's the deploy step).
     """
     content = generate_site_content(niche, city, model)
-    html = render_html(content, niche=niche, city=city, phone=phone)
+    niche_slug = slugify(niche + ('-' + city if city else ''))
+    root = (out_root or local_sites_dir()) / niche_slug
+    root.mkdir(parents=True, exist_ok=True)
 
-    base = niche + ('-' + city if city else '')
-    slug = slugify(base)
-    root = out_root or local_sites_dir()
-    site_dir = root / slug
-    site_dir.mkdir(parents=True, exist_ok=True)
-    index_path = site_dir / 'index.html'
-    index_path.write_text(html, encoding='utf-8')
+    # Generic niche page (served at the bare subdomain).
+    generic = render_html(content, niche=niche, city=city, phone=phone)
+    index_path = root / 'index.html'
+    index_path.write_text(generic, encoding='utf-8')
 
-    logger.info('Сайт сгенерирован: %s (%s)', slug, index_path)
-    return {'slug': slug, 'dir': str(site_dir), 'index_path': str(index_path)}
+    clients: list[dict[str, str]] = []
+    for lead, cslug in client_slugs(leads or []):
+        name = (lead.get('name') or '').strip()
+        if not name:
+            continue
+        cdir = root / cslug
+        cdir.mkdir(parents=True, exist_ok=True)
+        logo_src = _save_logo(lead.get('logo_url'), cdir)
+        html = render_html(content, niche=niche, city=lead.get('city') or city,
+                           phone=lead.get('phone') or lead.get('phone_wa'),
+                           brand=name, logo_src=logo_src)
+        (cdir / 'index.html').write_text(html, encoding='utf-8')
+        clients.append({'slug': cslug, 'name': name})
+
+    logger.info('Сайт ниши сгенерирован: %s (%d персональных страниц)',
+                niche_slug, len(clients))
+    return {'slug': niche_slug, 'dir': str(root), 'index_path': str(index_path),
+            'count': len(clients), 'clients': clients}

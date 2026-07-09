@@ -14,6 +14,46 @@ TYPE_NAMES = {
 }
 
 
+def _extract_logo(item: dict[str, Any]) -> Optional[str]:
+    """Best-effort: pull a business photo/avatar URL from the raw 2GIS item."""
+
+    def first_url(value: Any) -> Optional[str]:
+        if isinstance(value, str):
+            return value if value.startswith('http') else None
+        if isinstance(value, list):
+            for el in value:
+                hit = first_url(el)
+                if hit:
+                    return hit
+        if isinstance(value, dict):
+            direct_keys = (
+                'avatar_url', 'logo_url', 'main_photo_url', 'preview_url',
+                'photo_url', 'image_url', 'url',
+            )
+            for key in direct_keys:
+                hit = first_url(value.get(key))
+                if hit:
+                    return hit
+            nested_keys = (
+                'avatar', 'logo', 'main_photo', 'photo', 'photos', 'images',
+                'items', 'preview_urls',
+            )
+            for key in nested_keys:
+                hit = first_url(value.get(key))
+                if hit:
+                    return hit
+        return None
+
+    for key in (
+        'avatar', 'avatar_url', 'logo', 'logo_url', 'main_photo',
+        'main_photo_url', 'external_content', 'photos', 'photo', 'images',
+    ):
+        hit = first_url(item.get(key))
+        if hit:
+            return hit
+    return None
+
+
 def extract_record(catalog_doc: Any) -> Optional[dict[str, Any]]:
     """Extract a flat, presentation-ready record from a Catalog Item document.
 
@@ -76,4 +116,5 @@ def extract_record(catalog_doc: Any) -> Optional[dict[str, Any]]:
         'review_count': review_count,
         'contacts': contacts,
         'url': catalog_item.url,
+        'logo_url': _extract_logo(item),
     }

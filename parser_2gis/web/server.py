@@ -461,7 +461,11 @@ def create_app():
             return jsonify({'ok': False, 'error': 'Не указана ниша'}), 400
         opts = _outreach_opts()
         try:
-            info = sitegen.build_site(niche, city, model=opts.llm_model, phone=phone)
+            with odb.session() as conn:
+                leads = odb.leads_for_niche(conn, niche, city)
+            # One niche page + a personalized page per lead (name/phone/logo).
+            info = sitegen.build_site(niche, city, model=opts.llm_model,
+                                      leads=leads, phone=phone)
         except RuntimeError as e:
             return jsonify({'ok': False, 'error': str(e)}), 400
         except Exception as e:
@@ -479,6 +483,7 @@ def create_app():
         except Exception as e:
             logger.error('Не удалось сохранить сайт в БД: %s', e)
         return jsonify({'ok': True, 'slug': info['slug'], 'url': url,
+                        'count': info.get('count', 0),
                         'preview_url': f"/api/site/preview/{info['slug']}/"})
 
     @app.route('/api/site/preview/<slug>/')
@@ -489,6 +494,22 @@ def create_app():
         if not (site_dir / 'index.html').exists():
             return jsonify({'ok': False, 'error': 'Сайт не найден'}), 404
         return send_from_directory(str(site_dir), 'index.html')
+
+    @app.route('/api/site/preview/<slug>/<path:asset_path>')
+    def api_site_preview_asset(slug, asset_path):
+        from ..outreach import sitegen
+        site_dir = sitegen.local_sites_dir() / slug
+        root = site_dir.resolve()
+        target = (site_dir / asset_path).resolve()
+        try:
+            target.relative_to(root)
+        except ValueError:
+            return jsonify({'ok': False, 'error': 'Файл не найден'}), 404
+        if target.is_dir():
+            target = target / 'index.html'
+        if not target.exists() or not target.is_file():
+            return jsonify({'ok': False, 'error': 'Файл не найден'}), 404
+        return send_from_directory(str(target.parent), target.name)
 
     # ---- Deploy site to a subdomain (step 4) ----
     @app.route('/api/site/deploy', methods=['POST'])
