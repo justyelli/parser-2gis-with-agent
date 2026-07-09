@@ -65,7 +65,14 @@ server {
     server_name panel.${DOMAIN} ${DOMAIN};
     ssl_certificate ${CERT_DIR}/fullchain.pem;
     ssl_certificate_key ${CERT_DIR}/privkey.pem;
-    location / { proxy_pass http://127.0.0.1:8666; proxy_set_header Host \$host; proxy_set_header X-Real-IP \$remote_addr; }
+    location / {
+        proxy_pass http://127.0.0.1:8666;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_connect_timeout 30s;
+        proxy_send_timeout 300s;
+        proxy_read_timeout 300s;
+    }
 }
 # Любой поддомен -> папка сайта: cafe-almaty.${DOMAIN} -> ${SITES_DIR}/cafe-almaty/
 server {

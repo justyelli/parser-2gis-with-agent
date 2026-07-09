@@ -112,7 +112,13 @@ server {
 server {
     listen 80;
     server_name panel.mysites.kz;   # точное имя имеет приоритет над regex
-    location / { proxy_pass http://127.0.0.1:8666; proxy_set_header Host $host; }
+    location / {
+        proxy_pass http://127.0.0.1:8666;
+        proxy_set_header Host $host;
+        proxy_connect_timeout 30s;
+        proxy_send_timeout 300s;
+        proxy_read_timeout 300s;
+    }
 }
 ```
 ```bash

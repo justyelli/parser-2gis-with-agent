@@ -534,6 +534,23 @@
   var $=function(id){return document.getElementById(id)};
   var poll=null, cursor=0, records=[], histId=null;
 
+  function apiJson(resp){
+    return resp.text().then(function(text){
+      var data=null;
+      try{ data=text?JSON.parse(text):{}; }
+      catch(_){
+        var title=(text.match(/<title[^>]*>([^<]+)/i)||[])[1] || '';
+        title=title.replace(/\s+/g,' ').trim();
+        throw new Error('HTTP '+resp.status+(title?(' · '+title):'')+
+          '. Сервер вернул HTML вместо JSON.');
+      }
+      if(!resp.ok && data && !data.ok){
+        throw new Error(data.error || ('HTTP '+resp.status));
+      }
+      return data;
+    });
+  }
+
   // ---- i18n (Қазақша default, Русский) ----
   var T={
     kk:{
@@ -1320,7 +1337,7 @@
     $('wzSiteBtn').disabled=true;
     fetch('/api/site/generate',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({niche:niche, city:wzCampCity()})})
-      .then(function(r){return r.json()}).then(function(d){
+      .then(apiJson).then(function(d){
         $('wzSiteBtn').disabled=false;
         if(!d.ok){ info.textContent='⚠ '+(d.error||''); wzSiteRender(); return; }
         wzSiteBuilt=true; wzSitePreview=d.preview_url; wzSiteUrl=d.url||d.preview_url;
@@ -1356,7 +1373,7 @@
     var info=$('wzPubInfo'); info.textContent=t('wz_pub_ing'); $('wzPubBtn').disabled=true;
     fetch('/api/site/deploy',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({slug:wzSiteSlug})})
-      .then(function(r){return r.json()}).then(function(d){
+      .then(apiJson).then(function(d){
         $('wzPubBtn').disabled=false;
         if(!d.ok){ info.textContent='⚠ '+(d.error||''); return; }
         wzPublished=true; wzPubUrl=d.url||null;
